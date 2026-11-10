@@ -1,0 +1,118 @@
+schema: 1
+deck: "agent-unblock"
+name: "Agent unblock"
+by: "Studio Luftbrücke"
+license: "CC-BY-4.0"
+version: 1
+faces: [human, agent]
+mark: "square"
+description: "Errors, dead ends, loops: one concrete next move for a stuck agent"
+voice: "A calm senior engineer who has watched this exact loop before and knows the next move."
+glossary:
+  error: "Reads the actual failure message closely instead of guessing around it."
+  premise: "Questions what all your attempts took for granted."
+  shrink: "Makes the failing case smaller until the cause has nowhere to hide."
+  history: "Looks for the last state that worked and compares it with now."
+  ground: "Checks the setup under the code: folder, versions, settings, permissions."
+  reset: "Writes the state down and starts again from the note, not from the loop."
+  reframe: "Comes at the same goal from another side or with another approach."
+  evidence: "Replaces a guess with something measured or read."
+  forbid: "Names what already failed so it is not tried a fourth time."
+  scope: "Checks the size and direction of the task, or hands part of it over."
+cards:
+  - id: "ag-01"
+    human: "Read the error like a stranger would."
+    agent: "Quote the exact error line, then write two different readings of what it is saying before you make the next call."
+    tags: [error, auto]
+  - id: "ag-02"
+    human: "Make it smaller until it stops lying."
+    agent: "Cut the failing case down to the smallest input that still fails, run only that, then add pieces back one at a time."
+    tags: [shrink, auto]
+  - id: "ag-03"
+    human: "What did all three attempts believe?"
+    agent: "Name the one assumption your last three attempts shared, then test that assumption directly before changing anything else."
+    tags: [premise, auto]
+  - id: "ag-04"
+    human: "Put down the hammer."
+    agent: "Reach the same goal with a different tool than the one that just failed, and say in one line why it cannot hit the same wall."
+    tags: [reframe, auto]
+  - id: "ag-05"
+    human: "Ask one question, not ten."
+    agent: "Stop and ask the human one short question whose answer would remove the block. Say in one line what you tried, then wait for the answer."
+    tags: [human, scope]
+  - id: "ag-06"
+    human: "Try the opposite, on purpose."
+    agent: "Invert your last change: remove instead of add, pin instead of upgrade, narrow instead of widen. Run it once and note what moved."
+    tags: [reframe]
+  - id: "ag-07"
+    human: "Start at the finish line."
+    agent: "Write down the exact output that would mean done, then work backwards from it and find the first step that cannot produce it."
+    tags: [reframe, auto]
+  - id: "ag-08"
+    human: "Has this ever worked?"
+    agent: "Find the last state that worked (a commit, a lockfile, an earlier output in this session) and compare it with now, line by line, before the next fix."
+    tags: [history, auto]
+  - id: "ag-09"
+    human: "Check the floor you stand on."
+    agent: "Before touching the code again, print the ground: working directory, tool and runtime versions, the relevant environment variables, file permissions."
+    tags: [ground, auto]
+  - id: "ag-10"
+    human: "Make the silence talk."
+    agent: "If a step failed quietly or with a vague message, run it once more with verbose output or logging switched on, and read the whole output, not just the tail."
+    tags: [error, evidence, auto]
+  - id: "ag-11"
+    human: "Leave a note for the next you."
+    agent: "Write the state down in five lines: goal, what failed, why it failed, the facts you trust, the next step. Continue from that note alone, not from the loop."
+    tags: [reset, auto]
+  - id: "ag-12"
+    human: "Retire the move that keeps failing."
+    agent: "List every approach that already failed, one line each, and mark them all off limits for this task. The next attempt must differ from each of them."
+    tags: [forbid, auto]
+  - id: "ag-13"
+    human: "Take the wrapper off."
+    agent: "Do the failing step by hand once, in small read-only calls, instead of through the script or helper that wraps it, and note where the manual path splits off."
+    tags: [shrink, evidence, auto]
+  - id: "ag-14"
+    human: "Is this still the job?"
+    agent: "Reread the user's original request word for word and check that the thing you are fixing lies on its path. If the failing step is a detour, name the shorter route."
+    tags: [scope, auto]
+  - id: "ag-15"
+    human: "Pass the stubborn bit across the desk."
+    agent: "Tell the human the single step you cannot get past, with the exact error, and ask whether they want to take that step while you prepare everything around it."
+    tags: [human, scope]
+  - id: "ag-16"
+    human: "Read the label, not your memory of it."
+    agent: "Open the real source or help text of the function or command you are calling and compare its actual arguments and defaults with how you are calling it."
+    tags: [evidence, premise, auto]
+  - id: "ag-17"
+    human: "One knob per turn."
+    agent: "If your last attempts changed several things at once, make the next one differ from the last state you trust in exactly one place, so its result means something."
+    tags: [shrink, auto]
+  - id: "ag-18"
+    human: "Bet before you roll."
+    agent: "Before the next call, write the result you predict. If the real result differs, stop and explain the gap before doing anything else."
+    tags: [evidence, auto]
+  - id: "ag-19"
+    human: "Halve the haystack."
+    agent: "Take the path between the last good point and the failure, check its middle, and repeat on whichever half is wrong until one step is left."
+    tags: [shrink, history, auto]
+  - id: "ag-20"
+    human: "Copy the neighbour whose lights are on."
+    agent: "Find a place in this project or setup where the same thing already works, put it next to the failing one, and list every difference between the two."
+    tags: [evidence, reframe, auto]
+  - id: "ag-21"
+    human: "Which line in the wreckage is yours?"
+    agent: "In the traceback or log, find the first line that points at a file or setting this task touched, and start the diagnosis there instead of at the last line."
+    tags: [error, auto]
+  - id: "ag-22"
+    human: "Ship the rooms that have floors."
+    agent: "Set the failing piece aside, finish and check everything around it, then report to the user what works and the one piece that is still blocked, with its error."
+    tags: [scope]
+  - id: "ag-23"
+    human: "Swap the apology for a ruler."
+    agent: "If your next message would start with an apology and a retry, replace both with one measurement: a count, a timing, or a value printed where it fails."
+    tags: [evidence, auto]
+  - id: "ag-24"
+    human: "Brief a colleague who just walked in."
+    agent: "Write what should happen, what happens instead, where, and since when, one line each. The line you cannot fill in is the next thing to find out."
+    tags: [premise, reset]

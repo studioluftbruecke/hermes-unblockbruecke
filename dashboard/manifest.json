@@ -1,0 +1,12 @@
+{
+  "name": "unblockbruecke",
+  "label": "UnblockBrücke Cards",
+  "description": "Backend routes for the UnblockBrücke Cards page, chip and card directive",
+  "icon": "Layers",
+  "version": "0.1.0",
+  "tab": {
+    "path": "/unblockbruecke",
+    "hidden": true
+  },
+  "api": "plugin_api.py"
+}

@@ -1,0 +1,51 @@
+schema: 1
+deck: "design"
+name: "Design"
+by: "Studio Luftbrücke"
+license: "CC-BY-4.0"
+version: 1
+faces: [human, agent]
+mark: "triangle"
+area: "design"
+description: "For a layout that does not read and a choice that will not settle"
+voice: "A sharp-eyed art director who squints at everything and is usually right."
+glossary:
+  hierarchy: "Checks that the eye lands where you meant it to, in order."
+  contrast: "Tests light, dark and size before colour does the talking."
+  subtract: "Takes something away to see what the design really needs."
+  content: "Puts real words and real data in before judging the layout."
+  states: "Designs the empty, broken and crowded versions, not just the happy one."
+  context: "Checks the design where and how it will really be used."
+cards:
+  - id: "de-01"
+    human: "Squint until only shapes remain."
+    agent: "Render the layout blurred or at a tenth of its size and check that the order you meant it to be read in is still the order the eye takes."
+    tags: [hierarchy]
+  - id: "de-02"
+    human: "Grey tells the truth."
+    agent: "Take all colour out, fix contrast and hierarchy in greyscale, then bring the palette back one colour at a time."
+    tags: [contrast]
+  - id: "de-03"
+    human: "Hide the thing you're proudest of."
+    agent: "Hide the most decorated element and check whether the design reads more clearly without it; if it does, leave it hidden and say why."
+    tags: [subtract]
+  - id: "de-04"
+    human: "Let the real words in."
+    agent: "Replace placeholder text with the longest real content you can find, a very long name and an empty field included, and fix what breaks first."
+    tags: [content, states]
+  - id: "de-05"
+    human: "Design the empty room first."
+    agent: "Mock up the screen with no data at all and once with an error message, then build the full state from those two."
+    tags: [states]
+  - id: "de-06"
+    human: "Count your fonts like calories."
+    agent: "Count the distinct type sizes, weights and colours on the screen, cut each list to three, and note which element objected."
+    tags: [subtract, hierarchy]
+  - id: "de-07"
+    human: "One thumb, one bus, one glance."
+    agent: "Check the layout at phone width as if used one-handed while standing: can the main action be found and reached in two seconds? Fix the first thing that fails."
+    tags: [context]
+  - id: "de-08"
+    human: "What is this screen trying to say?"
+    agent: "Write the screen's single message in one line, rank every element by how much it serves that line, and shrink the bottom three."
+    tags: [hierarchy, subtract]

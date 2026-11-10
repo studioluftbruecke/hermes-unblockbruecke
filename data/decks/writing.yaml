@@ -1,0 +1,49 @@
+schema: 1
+deck: "writing"
+name: "Writing"
+by: "Studio Luftbrücke"
+license: "CC-BY-4.0"
+version: 1
+faces: [human, agent]
+mark: "ring"
+area: "writing"
+description: "Blank pages, stalled drafts and prose that will not read"
+voice: "An editor with a red pencil and a soft spot for writers who keep going."
+glossary:
+  start: "Gets the first real words down."
+  draft: "Keeps a stalled draft moving instead of polishing it."
+  prose: "Fixes sentences that trip, sag or say two things at once."
+  structure: "Checks the order and the reader before the wording."
+cards:
+  - id: "wr-01"
+    human: "Write the version you'd tell at the bar."
+    agent: "Ask the writer how they would tell this to a friend over a drink, type it word for word, and use it as the first line of the draft."
+    tags: [start, human]
+  - id: "wr-02"
+    human: "Start in the middle, where it's warm."
+    agent: "Ask which scene or point the writer is surest about, draft that one first, and leave the opening to be written last."
+    tags: [start, structure, human]
+  - id: "wr-03"
+    human: "Hide the first paragraph. See who notices."
+    agent: "Hide the first paragraph and read from the second; if nothing is lost, offer the second as the new opening."
+    tags: [prose, structure]
+  - id: "wr-04"
+    human: "Read it aloud, pencil in hand."
+    agent: "Read the stuck passage aloud or have it read back, mark every place the breath runs out or the tongue trips, and rewrite only the marked sentences."
+    tags: [prose]
+  - id: "wr-05"
+    human: "One idea per sentence. No stowaways."
+    agent: "Find the longest sentence in the passage, split it at each 'and', 'which' and 'but', and keep only the pieces that carry an idea of their own."
+    tags: [prose]
+  - id: "wr-06"
+    human: "Outline it after you've written it."
+    agent: "Write one line per paragraph saying what the paragraph does, not what it says; reorder the lines, then move the paragraphs to match."
+    tags: [structure, draft]
+  - id: "wr-07"
+    human: "Leave holes and keep walking."
+    agent: "Mark every missing fact, name or word with a placeholder like TK and keep drafting past it; fill all the placeholders in one separate pass afterwards."
+    tags: [draft, start]
+  - id: "wr-08"
+    human: "Who is this for, by first name?"
+    agent: "Ask the writer to name one real reader, then reread the draft as that person and mark the first line where they would stop reading."
+    tags: [structure, human]

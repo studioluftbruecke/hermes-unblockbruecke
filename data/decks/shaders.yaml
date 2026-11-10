@@ -1,0 +1,51 @@
+schema: 1
+deck: "shaders"
+name: "Shaders"
+by: "Studio Luftbrücke"
+license: "CC-BY-4.0"
+version: 1
+faces: [human, agent]
+mark: "half"
+area: "shaders"
+description: "Black screens, banding, jitter and noise that looks like static"
+voice: "A demoscener at 2 a.m., tired, cheerful, and sure the bug is one line away."
+glossary:
+  debug: "Makes the shader show its own values so you can see where it breaks."
+  color: "Checks colour space, gamma and how the final pixel is written."
+  precision: "Deals with floats running out of bits: banding, jitter, drift."
+  time: "Untangles the time uniform: freezing it, wrapping it, stepping it."
+  noise: "Gets noise under control before it gets clever."
+  math: "Hunts the division, root or power that blows up to NaN."
+cards:
+  - id: "sh-01"
+    human: "Black screen? Paint it red first."
+    agent: "Make the shader output solid red, then the uv as red and green, then step back toward the real output one line at a time until the picture breaks."
+    tags: [debug]
+  - id: "sh-02"
+    human: "Banding is your bit depth confessing."
+    agent: "Add a small hash dither of about one 255th to the final colour before output, and compare the gradient with and without it side by side."
+    tags: [color, precision]
+  - id: "sh-03"
+    human: "Ran fine at launch, shakes after an hour?"
+    agent: "Feed the shader a huge time value on purpose to reproduce the jitter now, then wrap time with mod over a period the effect repeats on."
+    tags: [time, precision]
+  - id: "sh-04"
+    human: "Is the uniform even home?"
+    agent: "Hard-code every uniform the effect depends on inside the shader. If the picture fixes itself, the bug is on the side that sends the values."
+    tags: [debug]
+  - id: "sh-05"
+    human: "Gamma is quietly lying to you."
+    agent: "Check where the maths happens: convert inputs to linear, blend there, convert back to display colour once at the very end, and compare with the old output."
+    tags: [color]
+  - id: "sh-06"
+    human: "Your noise looks like a TV with no aerial."
+    agent: "Swap the noise call for a plain checker to prove the coordinates first, then bring noise back with a single octave and add octaves while watching."
+    tags: [noise, debug]
+  - id: "sh-07"
+    human: "Almost zero divided is almost infinity."
+    agent: "Find every division, normalize, pow and sqrt fed by a value that can reach zero or go negative; paint any pixel whose value is not equal to itself, a NaN, in magenta, then clamp."
+    tags: [math, debug]
+  - id: "sh-08"
+    human: "Freeze time, then nudge one knob."
+    agent: "Pin time to a value where it looks wrong, change one constant per render, and only let time run again once the still frame looks right."
+    tags: [time, debug]

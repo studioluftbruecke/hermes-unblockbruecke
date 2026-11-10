@@ -1,0 +1,51 @@
+schema: 1
+deck: "coding"
+name: "Coding"
+by: "Studio Luftbrücke"
+license: "CC-BY-4.0"
+version: 1
+faces: [human, agent]
+mark: "diamond"
+area: "coding"
+description: "For the developer circling a bug or a design that has no name yet"
+voice: "A pair programmer who has seen it all and still finds bugs interesting."
+glossary:
+  bug: "For the bug you keep walking around without catching."
+  design: "For a structure that will not settle into shape."
+  evidence: "Replaces a hunch with a printed value or a side-by-side run."
+  naming: "Finds the name a piece of code is missing, or shows it is two things."
+  ground: "Rules out the setup before blaming the code."
+  scope: "Pins the problem down to one small, checkable statement."
+cards:
+  - id: "co-01"
+    human: "You've walked past the bug five times. Walk slower."
+    agent: "Take the function the developer keeps circling, add a print or assertion after each line that changes state, and read the values in order together."
+    tags: [bug, evidence]
+  - id: "co-02"
+    human: "If you can't name it, it's probably two things."
+    agent: "For the piece without a name, list what it knows and what it does. If the description needs an 'and', propose splitting it along that word."
+    tags: [design, naming]
+  - id: "co-03"
+    human: "Write the dumb version next to the clever one."
+    agent: "Write the most obvious, slow, unclever implementation beside the current one and run both on the same inputs; the first input where they disagree points at the bug."
+    tags: [bug, evidence]
+  - id: "co-04"
+    human: "The bug lives in the code you trust."
+    agent: "List the three pieces of code nobody has looked at because everyone is sure they work, and add one check to each before reading the suspect code again."
+    tags: [bug]
+  - id: "co-05"
+    human: "Draw the data, not the code."
+    agent: "Write out the shape of the data at each step from input to output in plain text; the step where the shape surprises the developer is where the design bends."
+    tags: [design, evidence]
+  - id: "co-06"
+    human: "Make the test say the bug out loud."
+    agent: "Write one failing test whose name states the bug in plain words. If the name is hard to write, the bug is not understood yet, so go back to reading."
+    tags: [bug, scope]
+  - id: "co-07"
+    human: "Write the second caller first."
+    agent: "When an interface will not settle, write the call sites for two different callers before the function itself, and let its shape follow what both need."
+    tags: [design, naming]
+  - id: "co-08"
+    human: "Is it the code, or is it the machine having a Tuesday?"
+    agent: "Reproduce the failure on a clean checkout in a fresh shell, so caches, stale builds and leftover state are ruled out before anyone edits code."
+    tags: [bug, ground]

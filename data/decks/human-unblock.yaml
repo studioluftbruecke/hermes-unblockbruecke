@@ -1,0 +1,117 @@
+schema: 1
+deck: "human-unblock"
+name: "Human unblock"
+by: "Studio Luftbrücke"
+license: "CC-BY-4.0"
+version: 1
+faces: [human, agent]
+mark: "circle"
+description: "Creative and work blocks: small moves to get a person going again"
+voice: "A friend in the studio who hands you a coffee and one small, slightly odd thing to try."
+glossary:
+  start: "Gets something onto the page so there is a thing to work on."
+  medium: "Moves the work to paper, voice or hands for a few minutes."
+  lateral: "Borrows a view from somewhere else to see the work differently."
+  scope: "Makes the task smaller until it fits into today."
+  memory: "Digs up something you already made or thought of."
+  momentum: "Trades the hard part for a quick win that gets you moving."
+  clarity: "Says the problem or the worry plainly so it can be handled."
+  core: "Finds the one part that matters and builds around it."
+  break: "Fits into a short pause away from the work."
+cards:
+  - id: "hu-01"
+    human: "Make the worst version first."
+    agent: "Ask the user for a deliberately bad two-minute draft, then help improve only its single best part."
+    tags: [start, human]
+  - id: "hu-02"
+    human: "Change the room, not the idea."
+    agent: "Suggest ten minutes in another medium (paper, a voice memo, a whiteboard photo) and offer to transcribe what comes back."
+    tags: [medium, human]
+  - id: "hu-03"
+    human: "Who would do this badly, beautifully?"
+    agent: "Ask which person the user admires would get this wrong in an interesting way, then sketch that version together for five minutes."
+    tags: [lateral, human]
+  - id: "hu-04"
+    human: "Cut it in half. Then again."
+    agent: "Offer the same task at half and at a quarter of its scope, and let the user pick one to finish today."
+    tags: [scope, human]
+  - id: "hu-05"
+    human: "Raid your own drawer."
+    agent: "Search the user's past notes and projects for an abandoned idea that fits here, show one with where it came from, and ask whether it still has legs."
+    tags: [memory, human]
+  - id: "hu-06"
+    human: "Clear the dull bits off the desk."
+    agent: "Pick the most mechanical subtask, do it with the user right now, and leave the hard part for when the momentum is back."
+    tags: [momentum, human]
+  - id: "hu-07"
+    human: "Pitch it to your neighbour's kid."
+    agent: "Ask for the problem in two plain sentences a child would follow, then reflect back the word the user seems to be walking around."
+    tags: [clarity, human]
+  - id: "hu-08"
+    human: "Set a timer you can't argue with."
+    agent: "Offer a 12-minute block with one named output, start it together, and check in the moment it ends."
+    tags: [momentum, human]
+  - id: "hu-09"
+    human: "What would you save from a fire?"
+    agent: "Ask the user to name the one element that must survive, then rebuild the plan around only that."
+    tags: [core, human]
+  - id: "hu-10"
+    human: "Mistakes are free samples."
+    agent: "Point at one accident in the current draft and ask whether it hints at a better direction than the plan did."
+    tags: [lateral, human]
+  - id: "hu-11"
+    human: "Walk. Take one question with you."
+    agent: "Suggest a short walk, write down one question for the user to carry, and ask for the answer when they are back."
+    tags: [break, human]
+  - id: "hu-12"
+    human: "Water, window, one stretch."
+    agent: "Suggest three minutes away from the screen: a glass of water, a look out of the window, one stretch. On return, ask for the next small step only."
+    tags: [break, human]
+  - id: "hu-13"
+    human: "Draw it with your wrong hand."
+    agent: "Suggest two minutes drawing the problem with the non-dominant hand and no words, then ask what the clumsiest shape in the drawing stands for."
+    tags: [break, medium, human]
+  - id: "hu-14"
+    human: "Write the done-announcement now."
+    agent: "Ask the user to draft the two-line message they will send when the work is finished. Turn the gap between that message and today into the to-do list."
+    tags: [core, human]
+  - id: "hu-15"
+    human: "Find the smallest yes."
+    agent: "Ask for one open decision the user can settle in under a minute, settle it together, and write it down as done."
+    tags: [momentum, human]
+  - id: "hu-16"
+    human: "Steal the shape, not the stuff."
+    agent: "Ask for a piece of work the user loves from another field, name its structure in one line, and try that structure on the current problem."
+    tags: [lateral, human]
+  - id: "hu-17"
+    human: "Name the dread in five words."
+    agent: "Ask what the user fears this work will turn out to be, in five words or fewer, then plan one step that tests that fear directly."
+    tags: [clarity, human]
+  - id: "hu-18"
+    human: "Promise someone a crumb."
+    agent: "Help the user pick one person and one tiny piece to send them before the day ends, and draft that message together."
+    tags: [momentum, human]
+  - id: "hu-19"
+    human: "Ten terrible titles, then a grin."
+    agent: "Ask for ten quick names for the piece in two minutes, no judging, then ask which one made the user smile and what it knows that the plan does not."
+    tags: [start, break, human]
+  - id: "hu-20"
+    human: "Look at it from across the room."
+    agent: "Suggest a two-minute step back: view the work tiny, from far away or in a mirror, then ask for one word about what stood out first."
+    tags: [break, lateral, human]
+  - id: "hu-21"
+    human: "Finish yesterday's sentence."
+    agent: "Ask where the user stopped last time, read the last line or step back to them, and ask only for the one that comes after it."
+    tags: [start, momentum, human]
+  - id: "hu-22"
+    human: "Lower the bar till you can step over it."
+    agent: "Ask what a merely fine version would need, write that down as today's target, and park the brilliant version in a note for later."
+    tags: [scope, human]
+  - id: "hu-23"
+    human: "Four in, six out, five times."
+    agent: "Lead a one-minute breathing pause: four counts in, six out, five rounds. Then ask the user to name the one thing they will do in the next ten minutes."
+    tags: [break, human]
+  - id: "hu-24"
+    human: "Argue for the option you're dodging."
+    agent: "When the user is torn between two options, ask them to argue for the one they lean against for one minute, then ask which argument surprised them."
+    tags: [clarity, human]

@@ -1,0 +1,47 @@
+name: unblockbruecke
+version: "0.1.0"
+description: "UnblockBrücke Cards: decks of short original cards that get humans and agents unstuck. Draw one when you are blocked; switch on auto-draw and Hermes draws one for itself after three failed tool calls in a row. Agent, human and area decks (coding, design, shaders, writing), your own decks, a journal of what helped. Local files, no account."
+author: "Studio Luftbrücke"
+license: MIT
+requires_hermes: ">=0.23.0"
+provides_tools:
+  - unblockbruecke_card
+  - unblockbruecke_decks
+provides_hooks:
+  - transform_tool_result
+config_schema:
+  autodraw:
+    type: boolean
+    default: false
+    label: "Hermes draws a card when it is stuck"
+    description: "Off by default. When on and several tool calls fail in a row in one turn, the failing result that reaches the threshold carries one card from the decks below. Hermes still sees the call as failed and its own loop warnings still apply; the card only adds a direction. Example: after three failed builds the third result ends with the card \"Name the one assumption your last three attempts shared, then test it.\""
+  autodraw_threshold:
+    type: integer
+    default: 3
+    label: "Failed tool calls in a row"
+    description: "How many failed tool calls in a row, in one turn and across any tools, bring a card (2 to 6). A successful call starts the count again."
+  autodraw_per_turn:
+    type: integer
+    default: 1
+    label: "Cards per turn at most"
+    description: "At most this many auto-drawn cards in one turn (1 to 3)."
+  autodraw_decks:
+    type: list
+    default: ["agent-unblock"]
+    label: "Decks Hermes may draw from"
+    description: "Deck names, for example [\"agent-unblock\"]. A deck is used only while its own auto-draw switch is on (Cards page, Decks); imported decks start with it off."
+  card_of_day:
+    type: boolean
+    default: true
+    label: "Card of the day"
+    description: "One card from Human unblock each day in the status bar, picked by the date in Hermes' time zone."
+  learning:
+    type: boolean
+    default: true
+    label: "Decks learn"
+    description: "Cards you rated as helpful are drawn a little more often; every card keeps a floor so none disappears. Reset on the Cards page, Journal."
+  show_in_sidebar:
+    type: boolean
+    default: true
+    label: "Show in sidebar"
+    description: "Shows the Cards row in the Desktop sidebar. When off, open the page from the command palette (Open decks) or the card-of-the-day chip."

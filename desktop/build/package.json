@@ -1,0 +1,14 @@
+{
+  "name": "unblockbruecke-desktop-build",
+  "private": true,
+  "description": "Builds plugins/unblockbruecke/desktop/plugin.js from desktop/src. Never installed at the plugin root.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "check": "node build.mjs --check-only"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}

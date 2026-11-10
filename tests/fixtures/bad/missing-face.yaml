@@ -1,0 +1,18 @@
+schema: 1
+deck: "missing-face"
+name: "Bad missing-face"
+by: "Tester"
+license: "CC0-1.0"
+version: 1
+faces: [human, agent]
+mark: "ring"
+glossary:
+  test: "A tag used in tests."
+cards:
+  - id: "bd-01"
+    human: "A fine first card."
+    agent: "Do one small concrete thing and report what changed."
+    tags: [test]
+  - id: "bd-02"
+    human: "Only one face here."
+    tags: [test]
