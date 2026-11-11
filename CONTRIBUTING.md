@@ -1,13 +1,13 @@
 # Propose a deck
 
-UnblockBrücke ships decks written for it. You can propose your own deck for everyone: open a
+Unblockbrücke ships decks written for it. You can propose your own deck for everyone: open a
 pull request to this repository that adds one file, `data/decks/community/<your-deck>.yaml`. Every
 deck is read and reviewed before it ships, because its cards end up in people's chats and, if they
 switch it on, in their agent's context.
 
 ## Before you open the pull request
 
-1. **Write the deck in the plugin.** In UnblockCards, Decks, create a deck and add your cards, or
+1. **Write the deck in the plugin.** On the Unblockbrücke page, Decks, create a deck and add your cards, or
    ask Hermes ("make me a deck for mixing music with five cards"). Export it as YAML when you are happy
    with it. A deck file looks like this:
 

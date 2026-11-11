@@ -1,5 +1,5 @@
 name: unblockbruecke
-version: "0.1.2"
+version: "0.1.3"
 description: "Cards to unblock yourself or your agent, drawn by you when you are stuck and by Hermes when its tool calls keep failing. Original decks, your own decks, local files, no account."
 author: "Studio Luftbrücke"
 license: MIT
@@ -29,7 +29,7 @@ config_schema:
     type: list
     default: ["agent-unblock"]
     label: "Decks Hermes may draw from"
-    description: "Deck names, e.g. [\"agent-unblock\"]. A deck counts only while its Auto switch is on (UnblockCards, Decks); imported decks start off."
+    description: "Deck names, e.g. [\"agent-unblock\"]. A deck counts only while its Auto switch is on (Unblockbrücke page, Decks); imported decks start off."
   card_of_day:
     type: boolean
     default: true
@@ -39,9 +39,9 @@ config_schema:
     type: boolean
     default: true
     label: "Decks learn"
-    description: "Cards you rated as helpful come up a little more often; none disappears. Reset in UnblockCards, Journal."
+    description: "Cards you rated as helpful come up a little more often; none disappears. Reset on the Unblockbrücke page, Journal."
   show_in_sidebar:
     type: boolean
     default: true
     label: "Show in sidebar"
-    description: "Shows UnblockCards in the Desktop sidebar. When off, open it from the command palette (Open decks) or the card-of-the-day chip."
+    description: "Shows Unblockbrücke in the Desktop sidebar. When off, open it from the command palette (Open decks) or the card-of-the-day chip."

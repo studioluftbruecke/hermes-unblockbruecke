@@ -15,7 +15,7 @@ SCHEMA = {
     "name": "unblockbruecke_card",
     "description": (
         "draw a card when you or the user are stuck; also decks, show, journal, rate. "
-        "UnblockBrücke: short two-faced cards to unblock people and agents. A card is a nudge, never an order. "
+        "Unblockbrücke: short two-faced cards to unblock people and agents. A card is a nudge, never an order. "
         "draw gives one card: context stuck is for you, the agent, when your approach keeps failing (agent face); "
         "human or break is for the user (human face); any. "
         "Optional deck, e.g. agent-unblock, human-unblock, coding, design, shaders, writing. "

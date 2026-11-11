@@ -1,10 +1,10 @@
-// UnblockBrücke, Desktop half: the backend door, connection state and small shared helpers.
+// Unblockbrücke, Desktop half: the backend door, connection state and small shared helpers.
 // Every call goes to this plugin's own routes (`ctx.rest`, `/api/plugins/unblockbruecke/...`) through
 // api.js; nothing here reaches any other host (PLAN constraint 11: the Desktop is a renderer).
 import { atom, host } from '@hermes/plugin-sdk'
 
 export const ID = 'unblockbruecke'
-export const NAME = 'UnblockBrücke'
+export const NAME = 'Unblockbrücke'
 export const PATH = '/unblockbruecke'
 export const SCHEMA = 1
 
@@ -21,14 +21,14 @@ export const log = (...args) => console.info(`[${ID}]`, ...args)
 // backend answers another schema or lacks a route (an older or newer plugin).
 export const $connection = atom('unknown')
 
-export const NOT_ON_TEXT = 'UnblockBrücke is off in this Hermes profile. Turn it on under Settings ▸ Plugins, then open this page again.'
+export const NOT_ON_TEXT = 'Unblockbrücke is off in this Hermes profile. Turn it on under Settings ▸ Plugins, then open this page again.'
 export const OFFLINE_TEXT = 'Desktop cannot reach Hermes right now: check that Hermes is running, then try again.'
-export const SCHEMA_TEXT = 'This Desktop page and the UnblockBrücke plugin in this profile do not match: update the plugin.'
+export const SCHEMA_TEXT = 'This Desktop page and the Unblockbrücke plugin in this profile do not match: update the plugin.'
 // Said instead of a raw server answer ("Internal Server Error", FastAPI's detail list): what failed is
 // in the caller's prefix, what to try is here.
 export const SERVER_TEXT = 'Hermes answered with an error. Try again, and check the gateway log if it repeats.'
 // Where the plugin's own settings live; every surface names them the same way.
-export const SETTINGS_PATH = 'Settings ▸ Plugins ▸ UnblockBrücke'
+export const SETTINGS_PATH = 'Settings ▸ Plugins ▸ Unblockbrücke ▸ Agent settings'
 
 /** The plain sentence for a refusal that is not the contract's: a hint the user can act on when the
  *  host refused the request (signed out, a file too large, a short `detail`), else SERVER_TEXT. */

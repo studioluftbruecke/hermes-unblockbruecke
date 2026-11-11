@@ -1,4 +1,4 @@
-// The UnblockCards page (/unblockbruecke): three views chosen by the query string (?view=table|decks|journal),
+// The Unblockbrücke page (/unblockbruecke): three views chosen by the query string (?view=table|decks|journal),
 // and the one-sentence states for a backend that is not on, not reachable, or does not match.
 import { useValue } from '@hermes/plugin-sdk'
 import { useEffect, useState } from 'react'
@@ -51,7 +51,7 @@ export function CardsPage() {
   const blocked = (decks.error && (decks.error.notOn || decks.error.schema || decks.error.network)) || conn === 'off' || conn === 'schema'
   return h('div', { className: 'ubk page', 'data-view': view },
     h('div', { className: 'head' },
-      h('h1', null, 'UnblockCards'),
+      h('h1', null, 'Unblockbrücke'),
       h('span', { className: 'muted small' }, 'Cards to unblock yourself or your agent.'),
       h('span', { className: 'grow' }),
       h('div', { className: 'seg', role: 'tablist', 'aria-label': 'View' }, VIEWS.map(([id, label]) =>

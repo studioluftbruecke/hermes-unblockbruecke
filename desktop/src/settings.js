@@ -1,7 +1,8 @@
-// The plugin's settings page (Settings ▸ Plugins ▸ UnblockBrücke ▸ Decks and learning): the deck
+// The plugin's settings page (Settings ▸ Plugins ▸ Unblockbrücke, headed "Decks and learning"): the deck
 // switches and the learning reset. Auto-draw, its threshold and decks, card of the day, learning and
 // "Show in sidebar" are the plugin's config_schema keys, which Desktop renders in its own form for
-// this plugin; this page shows their current values and points there. It never writes config.yaml.
+// this plugin under Agent settings; this page shows their current values and points there. It never
+// writes config.yaml.
 import { atom, host, pluginSettingsHref, Switch, useValue } from '@hermes/plugin-sdk'
 import { jsx } from 'react/jsx-runtime'
 
@@ -31,6 +32,7 @@ export function SettingsPage() {
     }
   }
   return h('div', { className: 'ubk col', style: { gap: 14, padding: 4, maxWidth: 820 }, 'data-ubk': 'settings' },
+    h('h1', null, 'Decks and learning'),
     h(ConnectionNote, { error: decks.error || settings.error }),
     h('div', { className: 'panel', style: { padding: '12px 14px' } },
       h('h2', null, 'Plugin settings'),

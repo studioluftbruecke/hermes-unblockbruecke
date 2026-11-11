@@ -1,7 +1,7 @@
 // The status-bar chip (F8, Q3): the card of the day (GET /today; hidden when the setting is off);
 // "Hermes drew <id>" for 30 s after a new auto-draw in the open chat. The popover shows the card
 // (flip), Another (POST /draw context human), Use in chat and Open decks. Palette and shortcut draws
-// made away from the UnblockCards page land here too.
+// made away from the Unblockbrücke page land here too.
 import { atom, host, Popover, PopoverContent, PopoverTrigger, useValue } from '@hermes/plugin-sdk'
 import { useEffect, useRef, useState } from 'react'
 import { jsx } from 'react/jsx-runtime'
@@ -84,7 +84,7 @@ export function Chip() {
   }
   return jsx(Popover, { open, onOpenChange: setOpen, children: [
     jsx(PopoverTrigger, { asChild: true, children: h('button', { type: 'button', className: `ubkchip${announce ? ' live' : ''}`, 'data-ubk': 'chip',
-      title: announce ? `Hermes drew ${announce.card} from ${(announce.view && announce.view.deck_name) || announce.deck} at ${whenLocal(announce.at)}` : pop ? 'The card you drew' : 'Card of the day', 'aria-label': `UnblockBrücke: ${label}` },
+      title: announce ? `Hermes drew ${announce.card} from ${(announce.view && announce.view.deck_name) || announce.deck} at ${whenLocal(announce.at)}` : pop ? 'The card you drew' : 'Card of the day', 'aria-label': `Unblockbrücke: ${label}` },
       h(Mark, { mark: announce && announce.view ? announce.view.mark : card ? card.mark : 'square' }), h('span', { className: 'tx' }, label)) }, 't'),
     jsx(PopoverContent, { align: 'end', side: 'top', className: 'w-auto', children: card ? h('div', { className: 'ubk pop', 'data-ubk': 'popover' },
       h(Card, { card, flipped, onFlip: () => setFlipped(!flipped), width: 200, size: 'sm' }),

@@ -507,7 +507,7 @@ def export(store: Store, slug: str, path: Optional[str] = None, overwrite: bool 
         if not p.parent.is_dir():
             raise EditError(f"the folder {p.parent} does not exist")
         if _inside_plugin(store, p):
-            raise EditError("export does not write into UnblockBrücke's own folders (its data or the plugin); "
+            raise EditError("export does not write into Unblockbrücke's own folders (its data or the plugin); "
                             "choose a folder of your own")
         if p.exists() or p.is_symlink():
             if not overwrite:

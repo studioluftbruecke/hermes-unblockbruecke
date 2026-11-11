@@ -14,7 +14,7 @@ WRITES = ("save", "restore", "delete", "switch", "import")
 SCHEMA = {
     "name": "unblockbruecke_decks",
     "description": (
-        "list, get, preview, save, versions, restore, delete, switch, import, export UnblockBrücke card decks. "
+        "list, get, preview, save, versions, restore, delete, switch, import, export Unblockbrücke card decks. "
         "Edits change the user's own decks; editing a shipped deck saves an own copy '<deck>-own'. "
         "preview shows the diff of changes (or of a whole deck in content); save repeats the change with the "
         "preview's confirm value. "

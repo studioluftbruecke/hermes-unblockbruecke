@@ -147,7 +147,7 @@ def unattended_reason(ctx: Any = None, environ: Optional[dict] = None) -> Option
         surface = ""
     surface = str(surface).strip().lower()
     if host and surface in HOST_BLIND_SURFACES:
-        return ("UnblockBrücke runs in a plugin host (plugins.isolation: host), where a one-shot or CLI turn "
+        return ("Unblockbrücke runs in a plugin host (plugins.isolation: host), where a one-shot or CLI turn "
                 "cannot be told from an attended one; set plugins.isolation: in_process to allow it here")
     cron, unknown = False, False
     try:
@@ -159,11 +159,11 @@ def unattended_reason(ctx: Any = None, environ: Optional[dict] = None) -> Option
     if cron or _truthy(_session_env("HERMES_CRON_SESSION")):
         return "a scheduled job"
     if unknown:
-        return ("UnblockBrücke could not ask Hermes whether this run is a scheduled job (plugin host); update "
+        return ("Unblockbrücke could not ask Hermes whether this run is a scheduled job (plugin host); update "
                 "Hermes, or set plugins.isolation: in_process")
     finite = _finite_turn()
     if finite is None and not host:
-        return "this Hermes version moved its one-shot marker (gateway.session_finite); update UnblockBrücke"
+        return "this Hermes version moved its one-shot marker (gateway.session_finite); update Unblockbrücke"
     if finite or _truthy(_session_env("HERMES_SINGLE_QUERY_SESSION")):
         return "a single-query run (hermes chat -q or -z)"
     platform = surface or _session_env("HERMES_SESSION_PLATFORM").strip().lower()

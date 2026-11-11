@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.3
+
+- The plugin is spelled **Unblockbrücke**, like its Studio Luftbrücke siblings, and the name
+  "UnblockCards" is gone. The sidebar row, the page title, the card back, the status-bar chip and the
+  Settings ▸ Plugins entry all read Unblockbrücke. The settings page that entry opens is headed
+  "Decks and learning"; the plugin's settings form sits beneath it in Agent settings. Slug, tools,
+  decks and the data folder do not change, so nothing moves on update.
+
 ## 0.1.2
 
 - Names and copy, no behaviour change. The plugin is **UnblockBrücke** (Settings entry, toasts,

@@ -1,13 +1,14 @@
-"""M1 'Names and copy' (PLAN-v0.2): the copy budgets and the one name per level, as 0.1.2 ships them.
+"""M1 'Names and copy' (PLAN-v0.2): the copy budgets and the one name per level, as 0.1.3 ships them.
 
-On 0.1.0/0.1.1 this fails: a 340-character manifest description, setting texts up to 414 characters,
-"draw, decks, show, ..." without "stuck" in the catalog head, and "UnblockBrücke Cards" plus the
-sidebar label "Cards" in desktop/src.
+On 0.1.0/0.1.1 this fails on the copy budgets: a 340-character manifest description, setting texts up
+to 414 characters, "draw, decks, show, ..." without "stuck" in the catalog head. On 0.1.2 it fails on
+the names: 0.1.3 shows Unblockbrücke on the sidebar row, the page, the settings entry and the card.
 
 The skill budget is relaxed on purpose: the plan's 400 words would drop the deck change format and the
 card rules the agent needs to edit decks, so the skill keeps every instruction and is held to the size
 it was cut to here (751 -> about 614 words).
 """
+
 import re
 
 from ruamel.yaml import YAML
@@ -35,7 +36,7 @@ def test_every_setting_description_within_140():
 
 
 def test_autodraw_text_still_says_in_a_row():
-    """No behaviour change in 0.1.2: the trigger is N failed calls in a row, not '3 of the last 5'."""
+    """No behaviour change since 0.1.2: the trigger is N failed calls in a row, not '3 of the last 5'."""
     schema = manifest()["config_schema"]
     assert "in a row" in schema["autodraw"]["description"]
     assert "in a row" in schema["autodraw_threshold"]["description"]
@@ -55,7 +56,19 @@ def test_skill_size():
 
 def test_desktop_src_uses_the_new_names():
     src = "\n".join(p.read_text(encoding="utf-8") for p in sorted((ROOT / "desktop" / "src").glob("*.js")))
-    assert "UnblockBrücke Cards" not in src
+    assert "UnblockCards" not in src
+    assert "UnblockBrücke" not in src
     assert not re.search(r"label: '(Cards)'", src)
-    assert "label: 'UnblockCards'" in src and "title: 'UnblockCards'" in src
+    assert "label: 'Unblockbrücke'" in src
+    assert "id: 'page', area: ROUTES_AREA, title: 'Unblockbrücke'" in src
+    assert "registerSettingsPage({ id: 'cards', title: 'Unblockbrücke'" in src
+    assert "h('h1', null, 'Decks and learning')" in src
+    assert "h('span', { className: 'bw' }, 'Unblockbrücke')" in src
     assert "'Cards to unblock yourself or your agent.'" in src
+
+
+def test_plugin_texts_use_the_new_names():
+    texts = [p for p in ROOT.rglob("*") if p.is_file() and p.suffix in {".py", ".md", ".yaml", ".json", ".mjs"}
+             and p.name != "CHANGELOG.md" and "node_modules" not in p.parts and p.parent.name != "tests"]
+    stale = [str(p.relative_to(ROOT)) for p in texts if re.search(r"UnblockBr(ü|ue)cke|UnblockCards", p.read_text(encoding="utf-8"))]
+    assert stale == []

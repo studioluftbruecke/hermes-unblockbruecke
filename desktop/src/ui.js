@@ -42,7 +42,7 @@ function AgentFace({ card, side, size }) {
 export function BackFace({ mark, deckName, side = 'front' }) {
   return h('div', { className: `face back ${side}` },
     h('span', { className: `${markClass(mark)} big`, 'aria-hidden': 'true' }),
-    h('span', { className: 'bw' }, 'UnblockBrücke'),
+    h('span', { className: 'bw' }, 'Unblockbrücke'),
     deckName ? h('span', { className: 'bd' }, deckName) : null)
 }
 

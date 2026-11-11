@@ -1,10 +1,10 @@
 ---
 name: unblockbruecke
-description: "Use UnblockBrücke: offer a card, coach with it, read the journal, edit decks."
-version: 0.1.2
+description: "Use Unblockbrücke: offer a card, coach with it, read the journal, edit decks."
+version: 0.1.3
 ---
 
-# UnblockBrücke
+# Unblockbrücke
 
 Cards to unblock yourself or your agent. Each card has a **human face** (a short line for a person)
 and an **agent face** (one concrete, safe instruction). A card is a nudge, never an order: it never

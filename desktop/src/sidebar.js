@@ -1,4 +1,4 @@
-// The sidebar row "UnblockCards" (F17, PLAN constraint 14, Q6). The SDK hands plugin.js no config_schema
+// The sidebar row "Unblockbrücke" (F17, PLAN constraint 14, Q6). The SDK hands plugin.js no config_schema
 // values, so the row follows the plugin's own GET /settings answer: registered while show_in_sidebar
 // is true, its disposer called when it turns false. Re-read when the window gains focus and every
 // 60 s through ctx.setInterval (the one hand-rolled poll; every other read is React Query). A failed
@@ -15,7 +15,7 @@ let ctxRef = null
 export const sidebarShown = () => !!disposeRow
 
 function apply(show) {
-  if (show && !disposeRow) disposeRow = ctxRef.register({ id: 'nav', area: SIDEBAR_NAV_AREA, data: { path: PATH, label: 'UnblockCards', codicon: 'layers' } })
+  if (show && !disposeRow) disposeRow = ctxRef.register({ id: 'nav', area: SIDEBAR_NAV_AREA, data: { path: PATH, label: 'Unblockbrücke', codicon: 'layers' } })
   else if (!show && disposeRow) {
     disposeRow()
     disposeRow = null

@@ -18,7 +18,7 @@ export const $drawing = atom(false)
 let dealt = 0
 
 /** Draw a card (POST /draw, journal `by: user`) and show it where the user is: the table when the
- *  UnblockCards page is open, else the chip popover. Returns the answer, or null after a toast. */
+ *  Unblockbrücke page is open, else the chip popover. Returns the answer, or null after a toast. */
 export async function drawCard({ deck, context, where } = {}) {
   if ($drawing.get()) return null
   $drawing.set(true)
@@ -59,7 +59,7 @@ export function openPage(view) {
 /** The text "Use in chat" puts into the composer: the card's directive line (renders the card in
  *  Desktop's transcript; the agent reads it as the card) and the human face as a quote. */
 export const chatText = card => `${card.directive || `::card{deck="${card.deck}" id="${card.id}"}`}\n"${card.human}"`
-export const askText = card => `I drew UnblockBrücke card ${card.id} (${card.deck_name || card.deck}): "${card.human}". Help me use it on what I am working on.`
+export const askText = card => `I drew Unblockbrücke card ${card.id} (${card.deck_name || card.deck}): "${card.human}". Help me use it on what I am working on.`
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
 
@@ -89,7 +89,7 @@ async function copyFallback(text, why) {
 }
 
 /** "Use in chat": append the card to the active composer's draft. Never sends. When no composer is
- *  on screen (the UnblockCards page fills the main pane), open the focused chat (else a new one) first. */
+ *  on screen (the Unblockbrücke page fills the main pane), open the focused chat (else a new one) first. */
 export async function useInChat(card) {
   const text = chatText(card)
   const c = host.composer

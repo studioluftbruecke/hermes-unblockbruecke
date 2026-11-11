@@ -8,7 +8,7 @@ The six decks in `data/decks/` (Agent unblock, Human unblock, Coding, Design, Sh
 by Studio Luftbrücke and licensed under
 [Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/).
 You may share and adapt them for any purpose, including commercially, if you credit
-"Studio Luftbrücke, UnblockBrücke" and say whether you changed them.
+"Studio Luftbrücke, Unblockbrücke" and say whether you changed them.
 
 Every card is written new for this plugin. The cards follow the spirit of Brian Eno and Peter
 Schmidt's Oblique Strategies; none of the original Oblique Strategies are included, and no data

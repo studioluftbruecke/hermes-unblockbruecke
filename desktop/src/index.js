@@ -1,5 +1,5 @@
 /**
- * UnblockBrücke, the Desktop half: the UnblockCards page (table, decks, journal) and its sidebar row
+ * Unblockbrücke, the Desktop half: the Unblockbrücke page (table, decks, journal) and its sidebar row
  * behind "Show in sidebar", the status-bar chip (card of the day, "Hermes drew <id>"), palette rows,
  * the rebindable "Draw a card" shortcut, the `card` transcript directive, and the plugin's settings
  * page. Source of desktop/plugin.js, built by desktop/build/build.mjs.
@@ -30,12 +30,12 @@ export default {
   register(ctx) {
     setCtx(ctx)
     ctx.onDispose(installStyle())
-    ctx.register({ id: 'page', area: ROUTES_AREA, title: 'UnblockCards', data: { path: PATH }, render: () => jsx(CardsPage, {}) })
+    ctx.register({ id: 'page', area: ROUTES_AREA, title: 'Unblockbrücke', data: { path: PATH }, render: () => jsx(CardsPage, {}) })
     ctx.register({ id: 'chip', area: STATUSBAR_AREAS.right, render: () => jsx(Chip, {}) })
     ctx.register({ id: 'directive-card', area: TRANSCRIPT_DIRECTIVE_AREA, data: { name: 'card', render: props => jsx(CardDirective, props) } })
-    ctx.register({ id: 'draw-key', area: KEYBINDS_AREA, data: { id: DRAW_ACTION, label: 'UnblockBrücke: Draw a card', category: 'view', defaults: DRAW_DEFAULT_KEYS, run: async () => drawCard({ deck: await shortcutDeck() }) } })
+    ctx.register({ id: 'draw-key', area: KEYBINDS_AREA, data: { id: DRAW_ACTION, label: 'Unblockbrücke: Draw a card', category: 'view', defaults: DRAW_DEFAULT_KEYS, run: async () => drawCard({ deck: await shortcutDeck() }) } })
     if (typeof ctx.registerSettingsPage === 'function') {
-      ctx.registerSettingsPage({ id: 'cards', title: 'Decks and learning', icon: 'layers', render: () => jsx(SettingsPage, {}) })
+      ctx.registerSettingsPage({ id: 'cards', title: 'Unblockbrücke', icon: 'layers', render: () => jsx(SettingsPage, {}) })
     }
     registerPalette(ctx)
     startSidebar(ctx)

@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 KEY = "unblockbruecke_card"
 LRU_SIZE = 512
-WHY = ("UnblockBrücke drew this card because {n} tool calls failed in a row in this turn. The call above still "
+WHY = ("Unblockbrücke drew this card because {n} tool calls failed in a row in this turn. The call above still "
        "failed; read its error as usual. The card is a lateral prompt, not an order: use its direction for the "
        "next step if it fits.")
 

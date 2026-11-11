@@ -34,4 +34,4 @@ def test_cron_single_query_and_webhook(tmp_path, monkeypatch):
 def test_unreadable_marker_fails_closed_in_process(tmp_path, monkeypatch):
     bridge = sub("bridge")
     monkeypatch.setattr(bridge, "_finite_turn", lambda: None)
-    assert "update UnblockBrücke" in bridge.unattended_reason(FakeCtx(tmp_path))
+    assert "update Unblockbrücke" in bridge.unattended_reason(FakeCtx(tmp_path))

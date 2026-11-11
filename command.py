@@ -47,6 +47,6 @@ def make_handler(store_factory: Callable[[], Any], settings_factory: Callable[[]
         try:
             return run(raw_args, store_factory(), settings_factory(), session_id=session_id or "")
         except Exception as exc:  # a slash command never shows a traceback
-            return f"UnblockBrücke could not draw: {type(exc).__name__}: {exc}"
+            return f"Unblockbrücke could not draw: {type(exc).__name__}: {exc}"
 
     return handler

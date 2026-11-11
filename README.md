@@ -1,8 +1,8 @@
-# UnblockBrücke
+# Unblockbrücke
 
 Cards to unblock yourself or your agent.
 
-![The UnblockCards page in Hermes Desktop: one drawn card from Agent unblock, human face up, with Draw, Use in chat and Ask Hermes](docs/screenshot-1.png)
+![The Unblockbrücke page in Hermes Desktop: one drawn card from Agent unblock, human face up, with Draw, Use in chat and Ask Hermes](docs/screenshot-1.png)
 
 Every card has two faces: a short line for you, and one concrete instruction for an agent. Draw one
 when you are blocked. Switch on auto-draw, and Hermes draws one for itself after three failed tool
@@ -57,14 +57,15 @@ both places, on the same version. With Hermes and Desktop on one computer, one i
 ## First use
 
 1. Install the plugin and switch its Desktop half on (above).
-2. Open **UnblockCards** in the sidebar, pick a deck and press **Draw**. Or type `/card` in any chat.
+2. Open **Unblockbrücke** in the sidebar, pick a deck and press **Draw**. Or type `/card` in any chat.
 3. To let Hermes draw for itself, switch on **Hermes draws when stuck** in
-   Settings ▸ Plugins ▸ UnblockBrücke.
+   Settings ▸ Plugins ▸ Unblockbrücke ▸ Agent settings.
 
 ## Settings
 
-Settings ▸ Plugins ▸ UnblockBrücke. The plugin's own **Decks and learning** page holds the
-per-deck **Draw** and **Auto** switches and **Reset learning**.
+Settings ▸ Plugins ▸ Unblockbrücke opens the plugin's **Decks and learning** page: the per-deck
+**Draw** and **Auto** switches and **Reset learning**. The settings below sit beneath it in
+**Agent settings**.
 
 | Setting | Default | What it does |
 | --- | --- | --- |
@@ -74,7 +75,7 @@ per-deck **Draw** and **Auto** switches and **Reset learning**.
 | `autodraw_decks` | `["agent-unblock"]` | Decks Hermes may draw from; each deck's own Auto switch must be on too |
 | `card_of_day` | on | One Human unblock card a day in the status bar |
 | `learning` | on | Cards rated Helped come up a little more often; none disappears |
-| `show_in_sidebar` | on | The UnblockCards row in the Desktop sidebar |
+| `show_in_sidebar` | on | The Unblockbrücke row in the Desktop sidebar |
 
 When nobody is at the keyboard (scheduled jobs, `hermes chat -q`), cards that ask a person
 something are skipped, and the agent cannot change your decks.
