@@ -59,7 +59,9 @@ def test_desktop_src_uses_the_new_names():
     assert "UnblockCards" not in src
     assert "UnblockBrücke" not in src
     assert not re.search(r"label: '(Cards)'", src)
-    assert "label: 'Unblockbrücke'" in src
+    assert "startSidebarRow(ctx, { brand: 'Unblockbrücke', path: PATH, codicon: 'layers', defaultPosition: 53," in src, \
+        "the sidebar row is the shared module's, under the brand (sidebar rows M6)"
+    assert "label: 'Open Unblockbrücke'" in src, "the palette row the hidden-row hint names"
     assert "id: 'page', area: ROUTES_AREA, title: 'Unblockbrücke'" in src
     assert "registerSettingsPage({ id: 'cards', title: 'Unblockbrücke'" in src
     assert "h('h1', null, 'Decks and learning')" in src
@@ -72,3 +74,14 @@ def test_plugin_texts_use_the_new_names():
              and p.name != "CHANGELOG.md" and "node_modules" not in p.parts and p.parent.name != "tests"]
     stale = [str(p.relative_to(ROOT)) for p in texts if re.search(r"UnblockBr(ü|ue)cke|UnblockCards", p.read_text(encoding="utf-8"))]
     assert stale == []
+
+
+def test_setting_texts_for_the_draw_button():
+    """PLAN-v0.1.3 § Settings: the new key and the two texts that now point at the Draw button."""
+    schema = manifest()["config_schema"]
+    assert schema["show_in_statusbar"]["label"] == "Show in status bar"
+    assert schema["show_in_statusbar"]["description"] == ("Shows the Draw button in the status bar. When off, draw from the page, "
+                                                          "the command palette or the shortcut.")
+    assert schema["show_in_statusbar"]["default"] is True
+    assert schema["card_of_day"]["description"] == "One card for you each day, shown in the Draw popover before you draw."
+    assert "show_in_sidebar" not in schema, "retired in 0.1.4 (sidebar rows D4): the switch is on the plugin's own page"

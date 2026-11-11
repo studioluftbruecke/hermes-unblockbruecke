@@ -229,7 +229,7 @@ def test_shortcut_rereads_a_stale_deck_list_before_trusting_it(tmp_path):
         await new Promise(r => setTimeout(r, 20))
         const key = ctx.reg.find(c => c.id === 'draw-key').data
         const press = async () => {
-          ctx.storage.set('deck', 'writing')
+          ctx.storage.set('deck:test', 'writing')
           const n = rests.length
           await key.run()
           await new Promise(r => setTimeout(r, 5))

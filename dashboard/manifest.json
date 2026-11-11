@@ -1,9 +1,9 @@
 {
   "name": "unblockbruecke",
   "label": "Unblockbrücke",
-  "description": "Backend routes for the Unblockbrücke page, chip and card directive",
+  "description": "Backend routes for the Unblockbrücke page, Draw button and card directive",
   "icon": "Layers",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "tab": {
     "path": "/unblockbruecke",
     "hidden": true

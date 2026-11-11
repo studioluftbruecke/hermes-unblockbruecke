@@ -17,9 +17,23 @@ def api(tmp_path):
 
 def test_health_and_settings(api):
     status, body = api.health()
-    assert status == 200 and body["schema"] == 1 and body["version"] == "0.1.3"
+    assert status == 200 and body["schema"] == 1 and body["version"] == "0.1.4"
     status, body = api.settings_get()
     assert body["settings"]["show_in_sidebar"] is False and body["settings"]["autodraw"] is False
+    assert body["settings"]["show_in_statusbar"] is True, "show_in_statusbar defaults to on (PLAN-v0.1.3 M3)"
+
+
+def test_retired_show_in_sidebar_is_still_read_and_answered():
+    """Sidebar rows D4/V5: the key left config_schema in 0.1.4 but the old config value is still read
+    and GET /settings answers it, so a Desktop with no stored sidebar choice can seed from it once."""
+    settings = sub("settings")
+    entry = lambda value: {"plugins": {"entries": {"unblockbruecke": {"settings": {"show_in_sidebar": value}}}}}
+    assert settings.read_from_config_file(entry(False))["show_in_sidebar"] is False
+    assert settings.read_from_config_file(entry(True))["show_in_sidebar"] is True
+    assert settings.read_from_config_file({})["show_in_sidebar"] is True
+    legacy = {"plugins": {"entries": {"unblockbruecke": {"config": {"show_in_sidebar": "off"}}}}}
+    assert settings.read_from_config_file(legacy)["show_in_sidebar"] is False
+    assert "show_in_sidebar" in settings.RETIRED
 
 
 def test_decks_list_and_one_deck_with_stats(api):

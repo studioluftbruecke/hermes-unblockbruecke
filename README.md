@@ -23,12 +23,15 @@ Strategies. The original Oblique Strategies are not included.
   draw.
 - **Your own decks.** Write decks on the page or ask Hermes, preview each change before you save it,
   restore an earlier version, import and export YAML.
-- **Cards everywhere.** Card of the day in the status bar, `/card` in any chat (no model call), the
-  command palette and ⌘⌥U (Ctrl+Alt+U), and inline cards with `::card{deck="coding" id="co-03"}`.
+- **Draw in the status bar.** Press **Draw** while you work: the deck for the chat you are in is
+  picked (a `coding` profile starts on Coding, and your last choice per profile wins), draw, then
+  **Use in chat** puts the card into the chat's draft. The card of the day waits there as one line.
+- **Cards everywhere.** `/card` in any chat (no model call), the command palette and ⌘⌥U
+  (Ctrl+Alt+U), and inline cards with `::card{deck="coding" id="co-03"}`.
 
-| Agent face | Journal | Your decks | Card of the day |
+| Agent face | Journal | Your decks | Draw from the status bar |
 | --- | --- | --- | --- |
-| ![The same card turned to its agent face](docs/screenshot-2.png) | ![The journal: who drew each card, what happened next, Helped or Not now](docs/screenshot-3.png) | ![The Decks view with an own deck and its versions](docs/screenshot-4.png) | ![The card of the day popover from the status bar](docs/screenshot-5.png) |
+| ![The same card turned to its agent face](docs/screenshot-2.png) | ![The journal: who drew each card, what happened next, Helped or Not now](docs/screenshot-3.png) | ![The Decks view with an own deck and its versions](docs/screenshot-4.png) | ![The Draw popover from the status bar: deck chips, a drawn card, Use in chat and Draw another](docs/screenshot-5.png) |
 
 ## Install and update
 
@@ -36,14 +39,14 @@ Strategies. The original Oblique Strategies are not included.
 hermes plugins install https://github.com/studioluftbruecke/hermes-unblockbruecke --enable
 ```
 
-Hermes Desktop loads the card table, chip and settings page (`desktop/plugin.js`) from the computer it
+Hermes Desktop loads the card table, Draw button and settings page (`desktop/plugin.js`) from the computer it
 runs on, never from a Hermes on a server. With Hermes on a server, install and update the plugin in
 both places, on the same version. With Hermes and Desktop on one computer, one install covers both.
 
 | Where | Install | Update |
 | --- | --- | --- |
 | Server: tools, hooks, routes | `hermes -p <profile> plugins install https://github.com/studioluftbruecke/hermes-unblockbruecke --enable` | `hermes -p <profile> plugins update unblockbruecke` |
-| Desktop computer: card table, chip and settings page | `hermes plugins install https://github.com/studioluftbruecke/hermes-unblockbruecke` | `hermes plugins update unblockbruecke` |
+| Desktop computer: card table, Draw button and settings page | `hermes plugins install https://github.com/studioluftbruecke/hermes-unblockbruecke` | `hermes plugins update unblockbruecke` |
 
 - After either step on the Desktop computer: Capabilities → Plugins → Rescan. A new install's
   Desktop half arrives switched off; switch it on there.
@@ -53,19 +56,23 @@ both places, on the same version. With Hermes and Desktop on one computer, one i
   Capabilities → Plugins, switch **Agent in <profile>** off and on, then start a new chat.
 - Same version in both places? Compare the Version column of `hermes plugins list` on the Desktop
   computer and `hermes -p <profile> plugins list` on the server.
+- The sidebar switch and position on the Decks and learning page are kept per Desktop, so a second
+  computer starts with the defaults.
 
 ## First use
 
 1. Install the plugin and switch its Desktop half on (above).
-2. Open **Unblockbrücke** in the sidebar, pick a deck and press **Draw**. Or type `/card` in any chat.
+2. Press **Draw** in the status bar, pick a deck and draw. Or open **Unblockbrücke** in the sidebar
+   or with **Open Unblockbrücke** in the command palette, or type `/card` in any chat.
 3. To let Hermes draw for itself, switch on **Hermes draws when stuck** in
    Settings ▸ Plugins ▸ Unblockbrücke ▸ Agent settings.
 
 ## Settings
 
-Settings ▸ Plugins ▸ Unblockbrücke opens the plugin's **Decks and learning** page: the per-deck
-**Draw** and **Auto** switches and **Reset learning**. The settings below sit beneath it in
-**Agent settings**.
+Settings ▸ Plugins ▸ Unblockbrücke opens the plugin's **Decks and learning** page: the **Sidebar**
+block (**Show in the sidebar** and **Position**, 53 by default; lower numbers sit higher, Kanban is
+50), the per-deck **Draw** and **Auto** switches and **Reset learning**. The settings below sit
+beneath it in **Agent settings**.
 
 | Setting | Default | What it does |
 | --- | --- | --- |
@@ -73,9 +80,9 @@ Settings ▸ Plugins ▸ Unblockbrücke opens the plugin's **Decks and learning*
 | `autodraw_threshold` | 3 | Failed tool calls in a row that bring a card (2 to 6) |
 | `autodraw_per_turn` | 1 | Auto-drawn cards per turn at most (1 to 3) |
 | `autodraw_decks` | `["agent-unblock"]` | Decks Hermes may draw from; each deck's own Auto switch must be on too |
-| `card_of_day` | on | One Human unblock card a day in the status bar |
+| `card_of_day` | on | One card a day, as a line in the Draw popover before you draw |
 | `learning` | on | Cards rated Helped come up a little more often; none disappears |
-| `show_in_sidebar` | on | The Unblockbrücke row in the Desktop sidebar |
+| `show_in_statusbar` | on | The Draw button in the status bar. Right-clicking the status bar also hides it, per Desktop |
 
 When nobody is at the keyboard (scheduled jobs, `hermes chat -q`), cards that ask a person
 something are skipped, and the agent cannot change your decks.
@@ -104,7 +111,7 @@ coach with one.
 - **Shell commands, child processes, scheduled jobs:** none.
 - **Bundled data:** the six decks in `data/decks/`. The plugin contains no text of the original
   Oblique Strategies and no data derived from it; the maintainer checks every deck against them
-  before it ships. `desktop/plugin.js` (66 KB) is built from `desktop/src` by `desktop/build/`
+  before it ships. `desktop/plugin.js` (71 KB) is built from `desktop/src` by `desktop/build/`
   (`npm ci && node build.mjs`). Hermes' install scan says `safe`; its medium findings are esbuild's
   character escapes in the bundle and the word `sudo` in the rule that refuses it in cards.
 - **Credentials:** none.

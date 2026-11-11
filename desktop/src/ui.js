@@ -16,6 +16,13 @@ const MARKS = new Set(['square', 'circle', 'triangle', 'diamond', 'half', 'ring'
 export const markClass = mark => `ubk-mark mk-${MARKS.has(mark) ? mark : 'square'}`
 export const Mark = ({ mark, className, style }) => h('span', { className: `${markClass(mark)}${className ? ` ${className}` : ''}`, style, 'aria-hidden': 'true' })
 
+/** Two overlapping cards, 12 px, drawn in currentColor so it follows the theme like Desktop's own
+ *  status-bar icons. */
+export const CardIcon = ({ size = 12 }) =>
+  h('svg', { width: size, height: size, viewBox: '0 0 12 12', fill: 'none', stroke: 'currentColor', strokeWidth: 1.1, 'aria-hidden': 'true', focusable: 'false', className: 'ubk-icon' },
+    h('rect', { x: 1, y: 2.6, width: 6, height: 8.4, rx: 1, transform: 'rotate(-10 4 6.8)' }),
+    h('rect', { x: 4.6, y: 1, width: 6, height: 8.4, rx: 1 }))
+
 const Index = ({ card, flip }) => h('span', { className: `idx${flip ? ' flip180' : ''}` }, h(Mark, { mark: card.mark }), h('span', null, card.id))
 
 function HumanFace({ card, side }) {

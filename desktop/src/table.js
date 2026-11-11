@@ -25,7 +25,7 @@ export function TableView({ decks }) {
   }
   const draw = () => {
     setWhy(false)
-    return drawCard({ deck: chosen ? chosen.deck : undefined, where: 'table' })
+    return drawCard({ deck: chosen ? chosen.deck : '', where: 'table' })
   }
 
   useEffect(() => {

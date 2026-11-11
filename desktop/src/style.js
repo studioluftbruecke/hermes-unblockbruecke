@@ -3,17 +3,23 @@
 // its own rules). Every UI colour comes from Desktop's theme variables. Resets inside the scope are
 // wrapped in :where() so they carry zero specificity and never undo Desktop's component classes.
 //
-// The one exception is the physical card (mockups/concept.html, approved): card stock, ink and the
-// paper's own lines are fixed colours, the same in light and dark, like a printed card on any table.
-// They live only between the card-stock markers below; tests/test_desktop_build.py allows colour
-// literals there and nowhere else.
+// The one exception is the physical card: card stock, ink and the paper's own lines are fixed colours,
+// the same in light and dark, like a printed card on any table. A16 (PLAN-v0.1.3): the human face is
+// light stock with dark ink, the agent face the reverse; a 1 px edge keeps each card visible on a theme
+// of its own shade. The greys reach 4.5:1 on their face
+// (experiments/unblockbruecke/v0.1.3/contrast.out). They live only between the card-stock markers
+// below; tests/test_desktop_build.py allows colour literals there and nowhere else.
 const STOCK = `/* card-stock:start */
-.ubk-card { --ubk-stock: #f3f2ee; --ubk-stock-2: #e7e5df; --ubk-stock-3: #dedbd3; --ubk-agent-stock: #eff0ed;
-  --ubk-ink: #24262b; --ubk-ink-2: #5a5d64; --ubk-ink-3: #8a8c91;
-  --ubk-rule: rgba(36,38,43,.16); --ubk-rule-2: rgba(36,38,43,.22); --ubk-grid: rgba(60,88,118,.075); --ubk-dots: rgba(36,38,43,.13);
-  --ubk-shadow: inset 0 1px 0 rgba(255,255,255,.7), inset 0 -1px 0 rgba(0,0,0,.05), 0 0 0 1px rgba(36,38,43,.10),
-    0 1px 2px rgba(48,42,30,.10), 0 12px 28px -10px rgba(48,42,30,.30);
-  --ubk-stack-shadow: 0 0 0 1px rgba(36,38,43,.10), 0 6px 14px -8px rgba(48,42,30,.35); }
+.ubk-card, .ubk-stack { --ubk-stock: #ffffff; --ubk-stock-2: #f2f2f2; --ubk-stock-3: #e6e6e6;
+  --ubk-ink: #000000; --ubk-ink-2: #595959; --ubk-ink-3: #6b6b6b;
+  --ubk-rule: rgba(0,0,0,.16); --ubk-rule-2: rgba(0,0,0,.24); --ubk-dots: rgba(0,0,0,.14);
+  --ubk-shadow: 0 0 0 1px #c4c4c4, 0 1px 2px rgba(0,0,0,.10), 0 12px 28px -10px rgba(0,0,0,.30);
+  --ubk-stack-shadow: 0 0 0 1px #c4c4c4, 0 6px 14px -8px rgba(0,0,0,.35);
+  --ubk-agent-stock: #000000; --ubk-agent-ink: #ffffff; --ubk-agent-ink-2: #a6a6a6; --ubk-agent-ink-3: #999999;
+  --ubk-agent-rule: rgba(255,255,255,.22); --ubk-agent-rule-2: rgba(255,255,255,.30); --ubk-grid: rgba(255,255,255,.09);
+  --ubk-agent-shadow: 0 0 0 1px #5c5c5c, 0 1px 2px rgba(0,0,0,.20), 0 12px 28px -10px rgba(0,0,0,.45); }
+.ubk-card .face.agent { --ubk-stock: var(--ubk-agent-stock); --ubk-ink: var(--ubk-agent-ink); --ubk-ink-2: var(--ubk-agent-ink-2);
+  --ubk-ink-3: var(--ubk-agent-ink-3); --ubk-rule: var(--ubk-agent-rule); --ubk-rule-2: var(--ubk-agent-rule-2); --ubk-shadow: var(--ubk-agent-shadow); }
 /* card-stock:end */`
 
 const CSS = `${STOCK}
@@ -85,8 +91,7 @@ const CSS = `${STOCK}
   padding: calc(var(--w) * .085) calc(var(--w) * .08); display: flex; flex-direction: column; overflow: hidden; box-shadow: var(--ubk-shadow); }
 .ubk-card .face::before { content: ""; position: absolute; inset: calc(var(--w) * .032); border: 1px solid var(--ubk-rule); border-radius: calc(var(--w) * .022); pointer-events: none; }
 .ubk-card .face.rear { transform: rotateY(180deg); }
-.ubk-card .face.agent { background-color: var(--ubk-agent-stock);
-  background-image: linear-gradient(var(--ubk-grid) 1px, transparent 1px), linear-gradient(90deg, var(--ubk-grid) 1px, transparent 1px);
+.ubk-card .face.agent { background-image: linear-gradient(var(--ubk-grid) 1px, transparent 1px), linear-gradient(90deg, var(--ubk-grid) 1px, transparent 1px);
   background-size: calc(var(--w) * .05) calc(var(--w) * .05); background-position: -1px -1px; }
 .ubk-card .f-top, .ubk-card .f-bot { display: flex; justify-content: space-between; align-items: center; position: relative; z-index: 1; gap: 6px; }
 .ubk-card .idx { display: inline-flex; align-items: center; gap: calc(var(--w) * .02); font: 500 max(9px, calc(var(--w) * .033))/1 var(--ubk-mono, monospace); letter-spacing: .04em; color: var(--ubk-ink-2); }
@@ -185,13 +190,28 @@ const CSS = `${STOCK}
 .ubk .setrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 14px; padding: 12px 14px; border-bottom: 1px solid var(--ubk-line); align-items: center; }
 .ubk .setrow:last-child { border-bottom: 0; }
 
-/* status-bar chip and popover */
-.ubkchip { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; height: 20px; padding: 0 8px; border: 1px solid var(--ui-stroke-secondary);
-  border-radius: 6px; background: transparent; color: var(--ui-text-secondary); cursor: pointer; max-width: 300px; white-space: nowrap; font-family: inherit; }
-.ubkchip:hover { color: var(--ui-text-primary); }
-.ubkchip .tx { overflow: hidden; text-overflow: ellipsis; }
-.ubkchip.live { color: var(--ui-text-primary); border-color: color-mix(in srgb, var(--ui-accent) 50%, var(--ui-stroke-secondary)); background: color-mix(in srgb, var(--ui-accent) 14%, transparent); }
-.ubk.pop { display: flex; gap: 14px; align-items: flex-end; }
+/* the Draw button and its popover */
+.ubkchip { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; height: 20px; padding: 0 7px; border: 0; border-radius: 4px;
+  background: transparent; color: var(--ui-text-secondary); cursor: pointer; white-space: nowrap; font-family: inherit; }
+.ubkchip:hover { color: var(--ui-text-primary); background: var(--ui-control-hover-background, color-mix(in srgb, var(--ui-text-primary) 8%, transparent)); }
+.ubkchip:focus-visible { outline: 2px solid var(--ui-accent); outline-offset: -2px; }
+.ubkchip .ic { position: relative; display: inline-flex; }
+.ubkchip .dot { position: absolute; top: -2px; right: -3px; width: 6px; height: 6px; border-radius: 50%; background: var(--ui-accent); }
+.ubk.pop { display: grid; gap: 10px; width: 346px; }
+.ubk.pop.before { width: 300px; }
+.ubk.pop .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.ubk .deckchip { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 9px; border: 1px solid var(--ubk-line); border-radius: 99px;
+  background: none; cursor: pointer; font-size: 12px; white-space: nowrap; }
+.ubk .deckchip:hover { background: var(--ubk-sunk); }
+.ubk .deckchip[aria-pressed="true"] { background: var(--ubk-sunk-2); border-color: var(--ubk-acc-line); font-weight: 600; }
+.ubk .deckchip:focus-visible, .ubk.pop .today:focus-visible { outline: 2px solid var(--ubk-acc); outline-offset: 1px; }
+.ubk.pop .today { display: flex; gap: 4px; min-width: 0; border: 0; background: none; padding: 0; cursor: pointer; text-align: left; font-size: 12px; color: var(--ubk-muted); }
+.ubk.pop .today .k { color: var(--ubk-fg); font-weight: 600; flex: none; }
+.ubk.pop .today .tx { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--ubk-serif); }
+.ubk.pop .today:hover .tx { text-decoration: underline; text-underline-offset: 2px; }
+.ubk.pop .deal { display: flex; gap: 14px; align-items: flex-end; }
+.ubk.pop .turnable { display: grid; gap: 4px; justify-items: end; }
+.ubk.pop .hint { font-size: 11px; color: var(--ubk-muted); }
 .ubk.pop .side { display: flex; flex-direction: column; gap: 6px; width: 132px; font-size: 12px; }
 .ubk.inline { display: inline-grid; gap: 4px; justify-items: start; margin: 6px 0; }
 @media (prefers-reduced-motion: reduce) {

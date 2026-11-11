@@ -1,8 +1,13 @@
 """Plugin settings with their defaults (PLAN constraint 4).
 
 `ctx.get_config` applies no `config_schema` defaults, so every read goes through `read()` with the
-`DEFAULTS` below, and numbers are clamped here. `tests/test_settings.py` checks `DEFAULTS` against
+`DEFAULTS` below, and numbers are clamped here. `tests/test_autodraw.py` checks `DEFAULTS` against
 `plugin.yaml`. Settings are read on every call (Q5: a `config set` applies on the next tool call).
+
+`RETIRED` keys left `config_schema` (Hermes' settings form) but are still read and answered by
+`GET /settings`, read-only. `show_in_sidebar` (0.1.4, sidebar rows D4): the sidebar switch moved to
+the Desktop (per computer, ctx.storage), and a Desktop with no stored choice seeds it once from this
+answer (V5), so the old value must stay readable after both halves update together.
 """
 from __future__ import annotations
 
@@ -16,7 +21,10 @@ DEFAULTS: dict[str, Any] = {
     "card_of_day": True,
     "learning": True,
     "show_in_sidebar": True,
+    "show_in_statusbar": True,
 }
+
+RETIRED = frozenset({"show_in_sidebar"})
 
 RANGES = {"autodraw_threshold": (2, 6), "autodraw_per_turn": (1, 3)}
 

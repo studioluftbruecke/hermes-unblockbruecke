@@ -39,7 +39,7 @@ export function atom(value) {
 }
 export const useValue = a => (a && a.get ? a.get() : null)
 export const host = {
-  state: { profile: atom('test'), focusedStoredSessionId: atom(null), focusedSessionId: atom(null) },
+  state: { profile: atom('test'), focusedSessionProfile: atom(null), focusedStoredSessionId: atom(null), focusedSessionId: atom(null) },
   navigate: path => globalThis.__calls.push(['navigate', path]),
   notify: p => globalThis.__toasts.push(p.message),
   composer: { setDraft: async () => true, getDraft: async () => '' },
@@ -72,6 +72,7 @@ export function useQuery({ queryKey, enabled }) {
 }
 export const ConfirmDialog = 'ConfirmDialog'
 export const Switch = 'Switch'
+export const Input = 'Input'
 export const Popover = 'Popover'
 export const PopoverTrigger = 'PopoverTrigger'
 export const PopoverContent = 'PopoverContent'
@@ -110,7 +111,10 @@ export function useEffect(fn, deps) {
   const changed = !deps || !e.deps || deps.length !== e.deps.length || deps.some((d, k) => !Object.is(d, e.deps[k]))
   if (changed) c.effects.push(() => { if (e.cleanup) e.cleanup(); e.deps = deps; e.cleanup = fn() || null })
 }
-export default { useState, useRef, useEffect }
+export class Component {
+  constructor(props) { this.props = props; this.state = {} }
+}
+export default { useState, useRef, useEffect, Component }
 """
 
 JSX = r"""
@@ -157,7 +161,7 @@ export function mount(el) {
       const c = states.get(p)
       c.i = 0
       __set(c)
-      const out = node.type(node.props)
+      const out = node.type.prototype && node.type.prototype.render ? new node.type(node.props).render() : node.type(node.props)
       __set(null)
       return expand(out, p)
     }
@@ -340,8 +344,10 @@ def test_no_visible_string_over_160_characters_and_deck_names_not_slugs(tmp_path
     assert "Coding" in out["settings"]
 
 
-def test_card_of_the_day_date_is_a_local_day_and_the_own_license_badge_is_gone(tmp_path):
-    """UI-23: the chip prints the card-of-the-day date through the local formatter (not "2026-11-10").
+def test_card_of_the_day_is_one_today_line_in_the_popover_and_the_own_license_badge_is_gone(tmp_path):
+    """UI-23, rewritten for 0.1.3 (A19): the card of the day is one line "Today: <card line>" in the
+    Draw popover before a draw, shown only while card_of_day is on; clicking it shows that card. The
+    button itself never names the card or a date.
     UI-24: an own deck's header shows "yours" once, not the license id "own" beside it."""
     out = run_js(tmp_path, """
         import { Chip } from '@src/chip.js'
@@ -349,72 +355,99 @@ def test_card_of_the_day_date_is_a_local_day_and_the_own_license_badge_is_gone(t
         import { jsx } from 'react/jsx-runtime'
         import { mount, text, all, queryClient } from './helpers.js'
         import { DECKS, MINE, NIGHT, CARD, K } from './data.js'
-        const now = new Date()
-        const iso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-        queryClient.setQueryData(K('today'), { ok: true, schema: 1, enabled: true, date: iso, card: CARD })
-        const { $popOpen } = await import('@src/state.js')
-        $popOpen.set(true)
-        const chip = text(mount(jsx(Chip, {})).tree)
+        queryClient.setQueryData(K('decks'), DECKS)
         queryClient.setQueryData(K('today'), { ok: true, schema: 1, enabled: true, date: '2026-03-02', card: CARD })
-        const old = text(mount(jsx(Chip, {})).tree)
+        const { $popOpen } = await import('@src/state.js')
+        const closed = text(mount(jsx(Chip, {})).tree)
+        $popOpen.set(true)
+        const view = mount(jsx(Chip, {}))
+        const today = all(view.tree, n => n.props['data-ubk'] === 'today')
+        const on = text(today)
+        today[0].props.onClick()
+        const shown = all(view.render(), n => n.props['data-ubk'] === 'popover')[0]
+        queryClient.setQueryData(K('today'), { ok: true, schema: 1, enabled: false, date: '2026-03-02', card: null })
+        $popOpen.set(false); $popOpen.set(true)
+        const { $popCard } = await import('@src/state.js')
+        $popCard.set(null)
+        const off = all(mount(jsx(Chip, {})).tree, n => n.props['data-ubk'] === 'today').length
         const badges = slug => {
           queryClient.setQueryData(K('deck', slug), slug === 'mine' ? MINE : NIGHT)
           const v = mount(jsx(DecksView, { decksData: { ...DECKS, decks: DECKS.decks.filter(d => d.deck === slug) } }))
           return all(v.tree, n => n.type === 'span' && /badge/.test(n.props.className || '')).map(text)
         }
-        console.log(JSON.stringify({ chip, iso, old, mine: badges('mine'), night: badges('night-shift') }))
+        console.log(JSON.stringify({ closed, on, state: shown.props['data-state'], card: all(shown, n => n.props['data-card']).map(n => n.props['data-card']),
+          off, mine: badges('mine'), night: badges('night-shift') }))
     """)
-    assert out["iso"] not in out["chip"] and "Card of the day" in out["chip"] and "Today" in out["chip"]
-    assert "2 Mar" in out["old"] and "2026-03-02" not in out["old"]
+    assert out["closed"] == "Draw", out["closed"]
+    assert out["on"] == "Today: Read the error as a stranger.", out["on"]
+    assert out["state"] == "after" and out["card"] == ["coding/co-03"], out
+    assert out["off"] == 0
     assert "own" not in out["mine"] and "yours" in out["mine"], out["mine"]
     assert "CC0-1.0" in out["night"] and "imported" in out["night"]
 
 
-# ---- UI-18: "Hermes drew" belongs to the chat it happened in ------------------------------------------
+# ---- UI-18, P3: a dot for the card Hermes drew in this chat --------------------------------------------
 
-def test_hermes_drew_clears_when_another_chat_gets_focus(tmp_path):
-    """UI-18: the chip's "Hermes drew <id> in this chat" goes away as soon as the focused chat changes."""
+def test_hermes_drew_dot_clears_on_open_and_when_another_chat_gets_focus(tmp_path):
+    """UI-18 for 0.1.3 (P3): an auto-draw in the focused chat puts a dot on the Draw icon and changes the
+    tooltip; opening the popover shows that card and clears the dot; a focus change clears it too. The
+    button text stays "Draw" throughout."""
     out = run_js(tmp_path, """
         import { Chip } from '@src/chip.js'
         import { jsx } from 'react/jsx-runtime'
-        import { mount, text, host, queryClient } from './helpers.js'
-        import { CARD, K } from './data.js'
+        import { mount, text, all, host, queryClient } from './helpers.js'
+        import { CARD, DECKS, K } from './data.js'
+        import { $popOpen } from '@src/state.js'
         const auto = (draws) => ({ ok: true, schema: 1, draws, totals: {}, learning: true })
         const drew = { draw_id: 'd-9', card: 'ag-16', deck: 'agent-unblock', at: new Date().toISOString(), view: { ...CARD, id: 'ag-16', deck: 'agent-unblock', deck_name: 'Agent unblock' } }
-        queryClient.setQueryData(K('today'), { ok: true, schema: 1, enabled: true, date: '2026-11-10', card: CARD })
+        queryClient.setQueryData(K('decks'), DECKS)
+        const chipOf = tree => all(tree, n => n.props['data-ubk'] === 'chip')[0]
+        const dot = tree => all(tree, n => n.props['data-ubk'] === 'dot').length
+        const look = tree => ({ dot: dot(tree), text: text(chipOf(tree)), title: chipOf(tree).props.title })
         host.state.focusedStoredSessionId.set('chat-a')
         queryClient.setQueryData(K('journal', 'auto', 'chat-a'), auto([]))
         const view = mount(jsx(Chip, {}))
-        const before = text(view.render())
+        const res = { before: look(view.render()) }
         queryClient.setQueryData(K('journal', 'auto', 'chat-a'), auto([drew]))
-        const live = text(view.render())
+        res.live = look(view.render())
+        all(view.tree, n => n.type === 'Popover')[0].props.onOpenChange(true)
+        const t = view.render()
+        const pop = all(t, n => n.props['data-ubk'] === 'popover')[0]
+        res.opened = { ...look(t), state: pop.props['data-state'], card: all(pop, n => n.props['data-card']).map(n => n.props['data-card']), text: text(pop) }
+        all(view.tree, n => n.type === 'Popover')[0].props.onOpenChange(false)
+        res.closed = look(view.render())
+        queryClient.setQueryData(K('journal', 'auto', 'chat-a'), auto([{ ...drew, draw_id: 'd-10' }, drew]))
+        res.again = look(view.render())
         host.state.focusedStoredSessionId.set('chat-b')
         queryClient.setQueryData(K('journal', 'auto', 'chat-b'), auto([]))
-        const other = text(view.render())
-        host.state.focusedStoredSessionId.set(null)
-        const none = text(view.render())
-        console.log(JSON.stringify({ before, live, other, none }))
+        res.other = look(view.render())
+        console.log(JSON.stringify(res))
     """)
-    assert "Hermes drew" not in out["before"]
-    assert "Hermes drew ag-16" in out["live"]
-    assert "Hermes drew" not in out["other"], out["other"]
-    assert "Hermes drew" not in out["none"], out["none"]
-    assert CARD_HUMAN in out["other"]
+    assert out["before"] == {"dot": 0, "text": "Draw", "title": "Draw a card"}, out
+    assert out["live"] == {"dot": 1, "text": "Draw", "title": "Hermes drew a card in this chat"}, out
+    assert out["opened"]["dot"] == 0 and out["opened"]["state"] == "hermes", out["opened"]
+    assert out["opened"]["card"] == ["agent-unblock/ag-16"] and "Hermes drew this in this chat" in out["opened"]["text"], out["opened"]
+    assert out["closed"]["dot"] == 0, out
+    assert out["again"]["dot"] == 1, out
+    assert out["other"]["dot"] == 0 and out["other"]["text"] == "Draw", out
 
 
 CARD_HUMAN = "Read the error as a stranger."
 
 
-# ---- UI-22: the shortcut draws from what the table shows ----------------------------------------------
+# ---- UI-22: the shortcut draws from the deck this profile last used ------------------------------------
 
-def test_shortcut_uses_the_table_deck_choice_and_falls_back_quietly(tmp_path):
-    """UI-22: mod+alt+u draws from the last deck only while it is switched on for drawing; a switched-off
-    or deleted deck falls back to Any deck without a toast per press, and deleting a deck forgets it."""
+def test_shortcut_uses_the_profile_deck_choice_and_falls_back_quietly(tmp_path):
+    """UI-22 for 0.1.3 (P1, A22): the page, the popover and mod+alt+u share one key per profile,
+    `deck:<profile>`. A deck picked on the page is the shortcut's deck in that profile and not in
+    another; a deck switched off or gone falls to the profile match (`coding` -> Coding) without a
+    toast, and is forgotten (`deck:<profile>` reads '' afterwards). Deleting a deck clears the key."""
     out = run_js(tmp_path, """
         import plugin from '@src/index.js'
         import { DecksView } from '@src/decks.js'
+        import { TableView } from '@src/table.js'
         import { jsx } from 'react/jsx-runtime'
-        import { fakeCtx, setAnswer, rests, mount, all, button, queryClient } from './helpers.js'
+        import { fakeCtx, setAnswer, rests, mount, all, button, host, queryClient } from './helpers.js'
         import { DECKS, MINE, SETTINGS, CARD, K } from './data.js'
         const decks = { ...DECKS, decks: DECKS.decks.map(d => (d.deck === 'writing' ? { ...d, switch: { draw: false, auto: false } } : d)) }
         setAnswer((m, p) => {
@@ -428,31 +461,42 @@ def test_shortcut_uses_the_table_deck_choice_and_falls_back_quietly(tmp_path):
         plugin.register(ctx)
         await new Promise(r => setTimeout(r, 20))
         const key = ctx.reg.find(c => c.id === 'draw-key').data
-        const press = async deck => {
-          ctx.storage.set('deck', deck)
+        const press = async () => {
           const n = rests.length
           await key.run()
           await new Promise(r => setTimeout(r, 5))
-          const sent = rests.slice(n).filter(([m, p]) => m === 'POST' && p === '/draw').map(r => r[2].deck || null)
-          return { sent, kept: ctx.storage.get('deck', '') }
+          return rests.slice(n).filter(([m, p]) => m === 'POST' && p === '/draw').map(r => r[2].deck || null)
         }
-        const res = { off: await press('writing'), again: await press(''), gone: await press('no-such-deck'), on: await press('coding') }
+        const res = {}
+        host.state.focusedSessionProfile.set('coding')
+        const table = mount(jsx(TableView, { decks: decks.decks }))
+        button(table.tree, /^Mine/).props.onClick()
+        res.pagePick = { coding: ctx.storage.get('deck:coding', ''), old: ctx.storage.get('deck', null) }
+        res.sameProfile = await press()
+        host.state.focusedSessionProfile.set('night-shift')
+        res.otherProfile = await press()
+        host.state.focusedSessionProfile.set('coding')
+        ctx.storage.set('deck:coding', 'writing')
+        res.off = { sent: await press(), kept: ctx.storage.get('deck:coding', null) }
+        ctx.storage.set('deck:coding', 'no-such-deck')
+        res.gone = { sent: await press(), kept: ctx.storage.get('deck:coding', null) }
         res.toasts = globalThis.__toasts.slice()
-        ctx.storage.set('deck', 'mine')
+        ctx.storage.set('deck:coding', 'mine')
         queryClient.setQueryData(K('deck', 'mine'), MINE)
         const view = mount(jsx(DecksView, { decksData: { ...DECKS, decks: DECKS.decks.filter(d => d.deck === 'mine') } }))
         button(view.tree, /^Delete deck$/).props.onClick()
         const dialog = all(view.render(), n => n.type === 'ConfirmDialog' && n.props.open)[0]
         await dialog.props.onConfirm()
-        res.afterDelete = ctx.storage.get('deck', '')
+        res.afterDelete = ctx.storage.get('deck:coding', null)
         console.log(JSON.stringify(res))
     """)
-    assert out["off"] == {"sent": [None], "kept": ""}, out
-    assert out["again"]["sent"] == [None]
-    assert out["gone"] == {"sent": [None], "kept": ""}, out
-    assert out["on"] == {"sent": ["coding"], "kept": "coding"}, out
+    assert out["pagePick"] == {"coding": "mine", "old": None}, out
+    assert out["sameProfile"] == ["mine"], out
+    assert out["otherProfile"] == ["night-shift"], out
+    assert out["off"] == {"sent": ["coding"], "kept": ""}, out
+    assert out["gone"] == {"sent": ["coding"], "kept": ""}, out
     assert out["toasts"] == [], out["toasts"]
-    assert out["afterDelete"] == ""
+    assert out["afterDelete"] == "", out
 
 
 # ---- the decks editor -------------------------------------------------------------------------------

@@ -290,7 +290,8 @@ def test_defaults_match_plugin_yaml():
     from ruamel.yaml import YAML
 
     schema = YAML(typ="safe").load(text)["config_schema"]
-    assert set(schema) == set(settings.DEFAULTS)
+    assert set(schema) == set(settings.DEFAULTS) - settings.RETIRED
+    assert settings.RETIRED == {"show_in_sidebar"} and not settings.RETIRED & set(schema)
     for key, spec in schema.items():
         assert spec["default"] == settings.DEFAULTS[key], key
     assert settings.read(lambda k, d=None: None) == settings.DEFAULTS

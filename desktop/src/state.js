@@ -1,5 +1,6 @@
 // Shared state and actions every surface uses: the card on the table, the draws of this session,
-// the chip popover, drawing (page, chip, palette, shortcut), and handing a card to chat.
+// the Draw popover, the default deck, drawing (page, popover, palette, shortcut), and handing a card
+// to chat.
 import { atom, host, queryClient } from '@hermes/plugin-sdk'
 
 import { api } from './api.js'
@@ -10,21 +11,33 @@ import { drawableDecks } from './queries.js'
 export const $table = atom(null)
 // The last six draws of this Desktop session, newest first.
 export const $session = atom([])
-// The status-bar popover: open flag and the card it shows instead of the card of the day.
+// The Draw popover: open flag, the card it shows after a draw, and the deck chip picked in it.
 export const $popOpen = atom(false)
 export const $popCard = atom(null)
+export const $popDeck = atom(null)
 export const $drawing = atom(false)
+
+// True while the Draw button is on screen (Chip mounted). A hidden button is not rendered at all
+// (Desktop's right-click menu, show_in_statusbar, or the whole bar hidden), so a draw meant for the
+// popover goes to the page instead of a popover nobody sees.
+let chipMounted = false
+export const setChipMounted = on => {
+  chipMounted = !!on
+}
 
 let dealt = 0
 
 /** Draw a card (POST /draw, journal `by: user`) and show it where the user is: the table when the
- *  Unblockbrücke page is open, else the chip popover. Returns the answer, or null after a toast. */
+ *  Unblockbrücke page is open, else the Draw popover, else (button hidden) the page. `deck` undefined
+ *  means the default deck (`defaultDeck`); '' or null means any deck. Returns the answer, or null
+ *  after a toast. */
 export async function drawCard({ deck, context, where } = {}) {
   if ($drawing.get()) return null
   $drawing.set(true)
   try {
+    const slug = deck === undefined ? await resolveDefaultDeck() : deck
     const body = {}
-    if (deck) body.deck = deck
+    if (slug) body.deck = slug
     if (context) body.context = context
     const out = await api.draw(body)
     if (!out || !out.card) return out
@@ -33,9 +46,11 @@ export async function drawCard({ deck, context, where } = {}) {
     $table.set(item)
     $session.set([item, ...$session.get().filter(x => x.draw_id !== out.draw_id)].slice(0, 6))
     const target = where || (isPagePath() ? 'table' : 'chip')
-    if (target === 'chip') {
+    if (target === 'chip' && chipMounted) {
       $popCard.set(item)
       $popOpen.set(true)
+    } else if (target === 'chip') {
+      openPage()
     }
     queryClient.invalidateQueries({ queryKey: qk('journal') })
     return out
@@ -125,26 +140,48 @@ export async function askHermes(card) {
   return ok
 }
 
-export const lastDeck = () => storage.get('deck', '')
-export const setLastDeck = slug => storage.set('deck', slug || '')
+/** The profile a deck choice belongs to: the focused chat's owner profile, else the profile Desktop
+ *  is bound to, else 'default'. A Desktop without focusedSessionProfile falls through. */
+export function currentProfile() {
+  const st = host.state || {}
+  const read = a => (a && typeof a.get === 'function' ? a.get() : null)
+  return read(st.focusedSessionProfile) || read(st.profile) || 'default'
+}
 
-/** The deck the shortcut draws from: the table's choice while that deck is still switched on for
- *  drawing (same filter as the table), else Any deck; a deck that is off or gone is forgotten, so the
- *  next press does not try it again. Uses the deck list the palette keeps in the query cache while it
- *  is younger than 30 s, and reads it again when it is older: a switch turned off from plugin settings,
- *  a tool or another window must not be drawn from by name. */
-export async function shortcutDeck() {
-  const slug = lastDeck()
-  if (!slug) return undefined
+// The last deck per profile (A22): one key the page, the popover and the shortcut all read and write.
+// Nothing is copied from the 0.1.2 key `deck`.
+const deckKey = profile => `deck:${profile || currentProfile()}`
+export const lastDeck = profile => storage.get(deckKey(profile), '')
+export const setLastDeck = (slug, profile) => storage.set(deckKey(profile), slug || '')
+
+/** P1: the deck the popover, the shortcut and the palette's "Draw a card" start from. In order: the
+ *  last deck drawn in this profile while it is still drawable; a drawable deck named like the profile
+ *  (`coding`, `shader` -> `shaders`, `designs` -> `design`); Human unblock; else undefined (any deck). */
+export function defaultDeck({ decks, profile, last }) {
+  const slugs = new Set(drawableDecks(decks).map(d => d.deck))
+  if (last && slugs.has(last)) return last
+  const p = String(profile || '').toLowerCase()
+  for (const s of p ? [p, `${p}s`, p.endsWith('s') ? p.slice(0, -1) : ''] : []) if (s && slugs.has(s)) return s
+  return slugs.has('human-unblock') ? 'human-unblock' : undefined
+}
+
+/** defaultDeck() with the live deck list. Uses the list the palette keeps in the query cache while it
+ *  is younger than 30 s, and reads it again when it is older: a switch turned off from plugin
+ *  settings, a tool or another window must not be drawn from by name. A last deck that is off or gone
+ *  is forgotten, so the next press does not try it again. */
+export async function resolveDefaultDeck() {
+  const profile = currentProfile()
+  const last = lastDeck(profile)
   let data
   try {
     data = await queryClient.fetchQuery({ queryKey: qk('decks'), queryFn: api.decks, staleTime: 30000, retry: false })
   } catch (error) {
-    log('shortcut: decks not read, drawing from any deck', error.message)
+    log('decks not read, drawing from any deck', error.message)
     return undefined
   }
-  if (drawableDecks(data && data.decks).some(d => d.deck === slug)) return slug
-  setLastDeck('')
-  return undefined
+  const decks = data && data.decks
+  if (last && !drawableDecks(decks).some(d => d.deck === last)) setLastDeck('', profile)
+  return defaultDeck({ decks, profile, last })
 }
+
 export { ID }

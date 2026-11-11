@@ -446,7 +446,7 @@ export function DecksView({ decksData }) {
           all.map(d => jsx('div', { className: `dl-row${current && current.deck === d.deck ? ' on' : ''}`, 'data-deck': d.deck, children: [
             jsx('button', { type: 'button', className: 'nm', onClick: () => { setSel(d.deck); setNewDeck(null) }, children: [jsx(Mark, { mark: d.mark }, 'm'), jsx('span', { dir: 'auto', children: d.name }, 'n')] }, 'b'),
             jsx('span', { className: 'sw', children: [
-              jsx('label', { title: 'Draw from this deck at the table, the chip and the palette', children: ['Draw', jsx(Switch, { size: 'xs', checked: !!(d.switch && d.switch.draw), onCheckedChange: v => toggle(d, 'draw', v), 'aria-label': `Draw from ${d.name}` }, 's')] }, 'd'),
+              jsx('label', { title: 'Draw from this deck at the table, the Draw button and the palette', children: ['Draw', jsx(Switch, { size: 'xs', checked: !!(d.switch && d.switch.draw), onCheckedChange: v => toggle(d, 'draw', v), 'aria-label': `Draw from ${d.name}` }, 's')] }, 'd'),
               jsx('label', { title: 'Hermes may auto-draw from this deck when it is stuck', children: ['Auto-draw', jsx(Switch, { size: 'xs', checked: !!(d.switch && d.switch.auto), onCheckedChange: v => toggle(d, 'auto', v), 'aria-label': `Auto-draw from ${d.name}` }, 's')] }, 'a'),
             ] }, 's'),
             jsx('span', { className: 'meta', children: [
