@@ -1,54 +1,83 @@
-# UnblockBrücke Cards
+# UnblockBrücke
 
-Decks of short cards that get you unstuck, and get your Hermes agent unstuck too. Every card has
-two faces: a playful line for you, and one concrete instruction for an agent. Draw one when you are
-blocked. Switch on auto-draw, and Hermes draws one for itself after three failed tool calls in a
-row.
+Cards to unblock yourself or your agent.
 
-A free, playful member of the Studio Luftbrücke plugin family.
+![The UnblockCards page in Hermes Desktop: one drawn card from Agent unblock, human face up, with Draw, Use in chat and Ask Hermes](docs/screenshot-1.png)
+
+Every card has two faces: a short line for you, and one concrete instruction for an agent. Draw one
+when you are blocked. Switch on auto-draw, and Hermes draws one for itself after three failed tool
+calls in a row. A free, playful member of the Studio Luftbrücke plugin family.
 
 The cards are written new for Hermes, in the spirit of Brian Eno and Peter Schmidt's Oblique
 Strategies. The original Oblique Strategies are not included.
 
-## Where it shows up in Hermes Desktop
+## What it does
 
-- **Cards** page (a sidebar row you can hide in the plugin's settings), with three views:
-  - **Table:** pick a deck, **Draw**, turn the card over (click it or press F). **Use in chat** puts
-    the card into your message draft, **Ask Hermes** starts a chat about it, and **Why this card?**
-    explains its tags.
-  - **Decks:** every deck with a **Draw** and an **Auto** switch. Write your own decks and cards,
-    preview each change before you save it, restore an earlier version, import and export YAML
-    files.
-  - **Journal:** every draw, who drew it, what happened next, and **Helped** / **Not now**.
-- **Card of the day** in the status bar. Click it for the card, **Another**, or **Open decks**.
-  When Hermes draws a card in the chat you have open, the chip says so for half a minute.
-- **Command palette:** "Draw a card", "Draw from <deck>", "Open decks". The shortcut
-  ⌘⌥U (Ctrl+Alt+U) draws a card; you can rebind it in Desktop's keyboard shortcuts.
-- **Cards in chat:** `/card` or `/card coding` in any chat draws without a model call, and your
-  agent can show a card inline with `::card{deck="coding" id="co-03"}`.
-- **Settings ▸ Plugins ▸ UnblockBrücke Cards:** auto-draw and its threshold, the decks Hermes may
-  draw from, card of the day, learning, show in sidebar; a **Decks and learning** page with the
-  deck switches and a **Reset learning** button.
+- **A card table in Hermes Desktop.** Pick a deck, draw, turn the card over (click it or press F).
+  **Use in chat**, **Ask Hermes** and **Why this card?** take it further.
+- **Auto-draw for your agent (off by default).** When tool calls fail in a row, the failing result
+  that reaches the count carries one card. The call still counts as failed: the card adds a
+  direction and never hides an error.
+- **Six decks, 80 cards.** Agent unblock (24), Human unblock (24), and Coding, Design, Shaders and
+  Writing (8 each). Cards you mark **Helped** come up a little more often; the journal keeps every
+  draw.
+- **Your own decks.** Write decks on the page or ask Hermes, preview each change before you save it,
+  restore an earlier version, import and export YAML.
+- **Cards everywhere.** Card of the day in the status bar, `/card` in any chat (no model call), the
+  command palette and ⌘⌥U (Ctrl+Alt+U), and inline cards with `::card{deck="coding" id="co-03"}`.
 
-## Decks
+| Agent face | Journal | Your decks | Card of the day |
+| --- | --- | --- | --- |
+| ![The same card turned to its agent face](docs/screenshot-2.png) | ![The journal: who drew each card, what happened next, Helped or Not now](docs/screenshot-3.png) | ![The Decks view with an own deck and its versions](docs/screenshot-4.png) | ![The card of the day popover from the status bar](docs/screenshot-5.png) |
 
-| Deck | For | Example |
+## Install and update
+
+```bash
+hermes plugins install https://github.com/studioluftbruecke/hermes-unblockbruecke --enable
+```
+
+Hermes Desktop loads the card table, chip and settings page (`desktop/plugin.js`) from the computer it
+runs on, never from a Hermes on a server. With Hermes on a server, install and update the plugin in
+both places, on the same version. With Hermes and Desktop on one computer, one install covers both.
+
+| Where | Install | Update |
 | --- | --- | --- |
-| Agent unblock (24) | Hermes and other agents stuck on an error | "What did all three attempts believe?" / "Name the one assumption your last three attempts shared, then test that assumption directly before changing anything else." |
-| Human unblock (24) | Creative and work blocks, and breaks | "Make the worst version first." |
-| Coding, Design, Shaders, Writing (8 each) | A craft that will not move | "Grey tells the truth." |
+| Server: tools, hooks, routes | `hermes -p <profile> plugins install https://github.com/studioluftbruecke/hermes-unblockbruecke --enable` | `hermes -p <profile> plugins update unblockbruecke` |
+| Desktop computer: card table, chip and settings page | `hermes plugins install https://github.com/studioluftbruecke/hermes-unblockbruecke` | `hermes plugins update unblockbruecke` |
 
-Decks learn from your ratings: a card you mark **Helped** comes up a little more often, never so
-much that the others disappear. **Reset learning** starts the counts again and keeps the journal.
+- After either step on the Desktop computer: Capabilities → Plugins → Rescan. A new install's
+  Desktop half arrives switched off; switch it on there.
+- No Hermes on the Desktop computer: Capabilities → Plugins → Install from Git with the URL; to
+  update, the same with Advanced → Force reinstall. Desktop's Update button updates the server only.
+- After an update on the server, Desktop chats and the plugin's routes keep the old code: in
+  Capabilities → Plugins, switch **Agent in <profile>** off and on, then start a new chat.
+- Same version in both places? Compare the Version column of `hermes plugins list` on the Desktop
+  computer and `hermes -p <profile> plugins list` on the server.
 
-## Auto-draw (off by default)
+## First use
 
-When it is on and tool calls fail in a row in one turn (three by default, the setting
-`autodraw_threshold`), the failing result that reaches the count carries one card from the decks you
-picked (Agent unblock unless you change it; an empty list means no deck). Hermes still sees the call as
-failed, and its own loop warnings still apply: the card adds a direction, it never hides an error.
-At most one card per turn. When nobody is at the keyboard (scheduled jobs, `hermes chat -q`), cards
-that ask a person something are skipped and the agent cannot change your decks.
+1. Install the plugin and switch its Desktop half on (above).
+2. Open **UnblockCards** in the sidebar, pick a deck and press **Draw**. Or type `/card` in any chat.
+3. To let Hermes draw for itself, switch on **Hermes draws when stuck** in
+   Settings ▸ Plugins ▸ UnblockBrücke.
+
+## Settings
+
+Settings ▸ Plugins ▸ UnblockBrücke. The plugin's own **Decks and learning** page holds the
+per-deck **Draw** and **Auto** switches and **Reset learning**.
+
+| Setting | Default | What it does |
+| --- | --- | --- |
+| `autodraw` | off | Hermes draws a card when tool calls fail in a row in one turn |
+| `autodraw_threshold` | 3 | Failed tool calls in a row that bring a card (2 to 6) |
+| `autodraw_per_turn` | 1 | Auto-drawn cards per turn at most (1 to 3) |
+| `autodraw_decks` | `["agent-unblock"]` | Decks Hermes may draw from; each deck's own Auto switch must be on too |
+| `card_of_day` | on | One Human unblock card a day in the status bar |
+| `learning` | on | Cards rated Helped come up a little more often; none disappears |
+| `show_in_sidebar` | on | The UnblockCards row in the Desktop sidebar |
+
+When nobody is at the keyboard (scheduled jobs, `hermes chat -q`), cards that ask a person
+something are skipped, and the agent cannot change your decks.
 
 ## Your agent
 
@@ -58,13 +87,7 @@ that ask a person something are skipped and the agent cannot change your decks.
 | `unblockbruecke_decks` | Edit decks: preview a change, save it with a version, restore, switch, import, export |
 
 The bundled skill `unblockbruecke:unblockbruecke` tells the agent when to offer a card and how to
-coach with one. With Eselsbrücke installed, a break the agent starts can show a human card.
-
-## Share a deck
-
-Propose a deck as a pull request to this repository; `CONTRIBUTING.md` explains the file and the
-rules, and `scripts/check_deck.py` checks it. Every deck is reviewed before it ships, and decks are
-plain text only: no links, no code, no HTML.
+coach with one.
 
 ## Disclosures
 
@@ -80,20 +103,25 @@ plain text only: no links, no code, no HTML.
 - **Shell commands, child processes, scheduled jobs:** none.
 - **Bundled data:** the six decks in `data/decks/`. The plugin contains no text of the original
   Oblique Strategies and no data derived from it; the maintainer checks every deck against them
-  before it ships. `desktop/plugin.js` (62 KB) is built from `desktop/src` by `desktop/build/`
+  before it ships. `desktop/plugin.js` (66 KB) is built from `desktop/src` by `desktop/build/`
   (`npm ci && node build.mjs`). Hermes' install scan says `safe`; its medium findings are esbuild's
   character escapes in the bundle and the word `sudo` in the rule that refuses it in cards.
 - **Credentials:** none.
 - **Telemetry:** none.
 
-## Install
+## Uninstall
 
 ```bash
-hermes plugins install studioluftbruecke/hermes-unblockbruecke
-hermes plugins enable unblockbruecke
+hermes plugins remove unblockbruecke
 ```
 
-Then switch on the Desktop half in Capabilities → Plugins.
+On a server, run it there with `-p <profile>` and on the Desktop computer. Your decks and journal stay
+in the profile's plugin data folder; delete that folder to remove them too.
+
+## Contributing
+
+Propose a deck or a fix as a pull request: [`CONTRIBUTING.md`](CONTRIBUTING.md) explains the deck
+file, the rules and how pull requests land. `scripts/check_deck.py` checks a deck.
 
 ## License
 

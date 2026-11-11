@@ -1,8 +1,8 @@
-// The plugin's settings page (Settings ▸ Plugins ▸ UnblockBrücke Cards ▸ Decks and learning): the deck
+// The plugin's settings page (Settings ▸ Plugins ▸ UnblockBrücke ▸ Decks and learning): the deck
 // switches and the learning reset. Auto-draw, its threshold and decks, card of the day, learning and
 // "Show in sidebar" are the plugin's config_schema keys, which Desktop renders in its own form for
 // this plugin; this page shows their current values and points there. It never writes config.yaml.
-import { host, pluginSettingsHref, Switch } from '@hermes/plugin-sdk'
+import { atom, host, pluginSettingsHref, Switch, useValue } from '@hermes/plugin-sdk'
 import { jsx } from 'react/jsx-runtime'
 
 import { api } from './api.js'
@@ -60,5 +60,20 @@ export function SettingsPage() {
     h('div', { className: 'panel setrow' },
       h('div', { className: 'col', style: { gap: 2 } }, h('strong', null, 'Learning'),
         h('span', { className: 'note' }, 'Cards you rated as helpful come up a little more often; every card keeps a floor. Reset starts the weights again; the journal stays.')),
-      h(ResetLearning, { learning: s ? s.learning : undefined })))
+      h(ResetLearning, { learning: s ? s.learning : undefined })),
+    h(TwoPlaceNote, null))
+}
+
+// Desktop loads this file from the computer it runs on, never from a remote Hermes, so an update on the
+// server leaves this half behind. host.state.connectionId is 'local' for this computer's own Hermes
+// (Desktop's LOCAL_CONNECTION_ID, never given to a remote source); any other value, null or a Desktop
+// without the field shows the line, because a missed update costs more than one line.
+const NO_CONNECTION = atom(null)
+const TWO_PLACE_TIP = 'No Hermes on this computer: Capabilities → Plugins → Install from Git with this plugin\'s repository, Force reinstall.'
+
+function TwoPlaceNote() {
+  const id = useValue((host.state && host.state.connectionId) || NO_CONNECTION)
+  if (id === 'local') return null
+  return h('p', { className: 'note', title: TWO_PLACE_TIP, 'data-ubk': 'two-place' },
+    'Hermes on another computer? Update this plugin on both. Here: ', h('code', null, `hermes plugins update ${ID}`), ', then Rescan.')
 }

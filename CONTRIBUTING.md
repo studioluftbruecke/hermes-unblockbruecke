@@ -1,13 +1,13 @@
 # Propose a deck
 
-UnblockBrücke Cards ships decks written for it. You can propose your own deck for everyone: open a
+UnblockBrücke ships decks written for it. You can propose your own deck for everyone: open a
 pull request to this repository that adds one file, `data/decks/community/<your-deck>.yaml`. Every
 deck is read and reviewed before it ships, because its cards end up in people's chats and, if they
 switch it on, in their agent's context.
 
 ## Before you open the pull request
 
-1. **Write the deck in the plugin.** On the Cards page, Decks, create a deck and add your cards, or
+1. **Write the deck in the plugin.** In UnblockCards, Decks, create a deck and add your cards, or
    ask Hermes ("make me a deck for mixing music with five cards"). Export it as YAML when you are happy
    with it. A deck file looks like this:
 
@@ -56,3 +56,10 @@ pull request template asks you to confirm that the text is your own work.
 
 Konstantin (Studio Luftbrücke) reads every deck. He may ask for changes, merge it, or decline it with
 a reason. A merged deck ships with the next release of the plugin, with your name in its `by` line.
+
+## How pull requests land
+
+Development happens in a private workbench. A pull request accepted here is ported into it by hand,
+with `Co-authored-by:` credit, and released in the next version. The GitHub pull request is then
+closed with a link to that release. Closed is not rejected: your change is in the release it links.
+For a bug or an idea that is not a deck, open a GitHub issue first.

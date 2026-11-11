@@ -18,7 +18,7 @@ export const $drawing = atom(false)
 let dealt = 0
 
 /** Draw a card (POST /draw, journal `by: user`) and show it where the user is: the table when the
- *  Cards page is open, else the chip popover. Returns the answer, or null after a toast. */
+ *  UnblockCards page is open, else the chip popover. Returns the answer, or null after a toast. */
 export async function drawCard({ deck, context, where } = {}) {
   if ($drawing.get()) return null
   $drawing.set(true)
@@ -89,7 +89,7 @@ async function copyFallback(text, why) {
 }
 
 /** "Use in chat": append the card to the active composer's draft. Never sends. When no composer is
- *  on screen (the Cards page fills the main pane), open the focused chat (else a new one) first. */
+ *  on screen (the UnblockCards page fills the main pane), open the focused chat (else a new one) first. */
 export async function useInChat(card) {
   const text = chatText(card)
   const c = host.composer

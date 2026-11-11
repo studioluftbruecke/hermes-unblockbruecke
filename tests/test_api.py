@@ -17,7 +17,7 @@ def api(tmp_path):
 
 def test_health_and_settings(api):
     status, body = api.health()
-    assert status == 200 and body["schema"] == 1 and body["version"] == "0.1.0"
+    assert status == 200 and body["schema"] == 1 and body["version"] == "0.1.2"
     status, body = api.settings_get()
     assert body["settings"]["show_in_sidebar"] is False and body["settings"]["autodraw"] is False
 

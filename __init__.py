@@ -1,4 +1,4 @@
-"""UnblockBrücke Cards: decks of short cards that get humans and agents unstuck.
+"""UnblockBrücke: cards to unblock yourself or your agent.
 
 `register(ctx)` adds the agent tools in `REGISTERED`, the `/card` command, the
 `transform_tool_result` hook for auto-draw (off by default) and the bundled skill. State lives in
@@ -117,7 +117,7 @@ def _register_skill(ctx) -> None:
     skill = Path(__file__).resolve().parent / "skills" / SKILL_NAME / "SKILL.md"
     if callable(getattr(ctx, "register_skill", None)) and skill.exists():
         try:
-            ctx.register_skill(SKILL_NAME, skill, "Use UnblockBrücke Cards: when to offer a card, how to coach with a "
+            ctx.register_skill(SKILL_NAME, skill, "Use UnblockBrücke: when to offer a card, how to coach with a "
                                                   "card's agent face, auto-draw, the deck file format.")
         except ValueError:
             pass  # already registered by an earlier load in this process

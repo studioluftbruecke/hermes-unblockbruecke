@@ -1,7 +1,7 @@
 // The status-bar chip (F8, Q3): the card of the day (GET /today; hidden when the setting is off);
 // "Hermes drew <id>" for 30 s after a new auto-draw in the open chat. The popover shows the card
 // (flip), Another (POST /draw context human), Use in chat and Open decks. Palette and shortcut draws
-// made away from the Cards page land here too.
+// made away from the UnblockCards page land here too.
 import { atom, host, Popover, PopoverContent, PopoverTrigger, useValue } from '@hermes/plugin-sdk'
 import { useEffect, useRef, useState } from 'react'
 import { jsx } from 'react/jsx-runtime'

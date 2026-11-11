@@ -1,6 +1,6 @@
 name: unblockbruecke
-version: "0.1.0"
-description: "UnblockBrücke Cards: decks of short original cards that get humans and agents unstuck. Draw one when you are blocked; switch on auto-draw and Hermes draws one for itself after three failed tool calls in a row. Agent, human and area decks (coding, design, shaders, writing), your own decks, a journal of what helped. Local files, no account."
+version: "0.1.2"
+description: "Cards to unblock yourself or your agent, drawn by you when you are stuck and by Hermes when its tool calls keep failing. Original decks, your own decks, local files, no account."
 author: "Studio Luftbrücke"
 license: MIT
 requires_hermes: ">=0.23.0"
@@ -13,8 +13,8 @@ config_schema:
   autodraw:
     type: boolean
     default: false
-    label: "Hermes draws a card when it is stuck"
-    description: "Off by default. When on and several tool calls fail in a row in one turn, the failing result that reaches the threshold carries one card from the decks below. Hermes still sees the call as failed and its own loop warnings still apply; the card only adds a direction. Example: after three failed builds the third result ends with the card \"Name the one assumption your last three attempts shared, then test it.\""
+    label: "Hermes draws when stuck"
+    description: "Off by default. After 3 failed tool calls in a row in one turn, the failing result carries one card with a next move. The call still fails."
   autodraw_threshold:
     type: integer
     default: 3
@@ -29,7 +29,7 @@ config_schema:
     type: list
     default: ["agent-unblock"]
     label: "Decks Hermes may draw from"
-    description: "Deck names, for example [\"agent-unblock\"]. A deck is used only while its own auto-draw switch is on (Cards page, Decks); imported decks start with it off."
+    description: "Deck names, e.g. [\"agent-unblock\"]. A deck counts only while its Auto switch is on (UnblockCards, Decks); imported decks start off."
   card_of_day:
     type: boolean
     default: true
@@ -39,9 +39,9 @@ config_schema:
     type: boolean
     default: true
     label: "Decks learn"
-    description: "Cards you rated as helpful are drawn a little more often; every card keeps a floor so none disappears. Reset on the Cards page, Journal."
+    description: "Cards you rated as helpful come up a little more often; none disappears. Reset in UnblockCards, Journal."
   show_in_sidebar:
     type: boolean
     default: true
     label: "Show in sidebar"
-    description: "Shows the Cards row in the Desktop sidebar. When off, open the page from the command palette (Open decks) or the card-of-the-day chip."
+    description: "Shows UnblockCards in the Desktop sidebar. When off, open it from the command palette (Open decks) or the card-of-the-day chip."
