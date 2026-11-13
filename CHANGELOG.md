@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.2
+
+No change to how the plugin works; updating is optional.
+
+- A GitHub Actions job rebuilds `desktop/plugin.js` from `desktop/src` and fails when it differs from
+  the committed file, so the Desktop bundle can be trusted without rebuilding it by hand.
+
 ## 0.2.1
 
 A review round on security and correctness before the catalog's next review. Update both halves: the plugin where Hermes runs and the one Hermes Desktop loads.

@@ -1,0 +1,42 @@
+# Rebuilds desktop/plugin.js from desktop/src and the pinned esbuild in desktop/build, and fails when the
+# committed file differs from the rebuild, so a reviewer can trust the generated bundle without
+# rebuilding it by hand. Pattern: hermes-eselsbruecke's .github/workflows/bundle.yml.
+name: bundle matches source
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      # The build checks the bundle with Desktop's runtime loader import scan (apps/desktop), taken
+      # from a fixed Hermes commit (0.23.1), so a later upstream change cannot turn this job red.
+      # The scan reads the bundle only; it does not change the bytes the build writes.
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          repository: NousResearch/hermes-agent
+          ref: 3b421578588243f920886e6fe79a6faa87ea026e
+          path: hermes-agent
+          sparse-checkout: apps/desktop
+      - uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
+        with:
+          node-version: 22
+      - name: Install the pinned build packages
+        working-directory: desktop/build
+        run: npm ci --ignore-scripts
+      - name: Rebuild into a temp folder
+        working-directory: desktop/build
+        env:
+          HERMES_SOURCE: ${{ github.workspace }}/hermes-agent
+        run: node build.mjs --out "$RUNNER_TEMP/rebuilt"
+      - name: Compare with the committed file
+        run: |
+          echo "$(sha256sum "$RUNNER_TEMP/rebuilt/plugin.js" | cut -c1-64)  rebuilt   plugin.js"
+          echo "$(sha256sum desktop/plugin.js | cut -c1-64)  committed desktop/plugin.js"
+          cmp -s "$RUNNER_TEMP/rebuilt/plugin.js" desktop/plugin.js || { echo "::error file=desktop/plugin.js::differs from the rebuild"; exit 1; }

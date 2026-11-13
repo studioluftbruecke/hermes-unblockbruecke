@@ -169,7 +169,9 @@ coach with one.
 - **Bundled data:** the six decks in `data/decks/`. The plugin contains no text of the original
   Oblique Strategies and no data derived from it; the maintainer checks every deck against them
   before it ships. `desktop/plugin.js` (72 KB) is built from `desktop/src` by `desktop/build/`
-  (`npm ci`, then `HERMES_SOURCE=<Hermes source> node build.mjs`). Hermes' install scan says `safe`; its medium findings are esbuild's
+  (`npm ci`, then `HERMES_SOURCE=<Hermes source> node build.mjs`) byte for byte; the GitHub Actions
+  job `.github/workflows/bundle.yml` rebuilds it on every push and fails when the committed file
+  differs. Hermes' install scan says `safe`; its medium findings are esbuild's
   character escapes in the bundle, the word `sudo` in the rule that refuses it in cards, and the
   tests that run node.
 - **Credentials:** none.
