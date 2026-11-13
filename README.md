@@ -28,7 +28,8 @@ Strategies. The original Oblique Strategies are not included.
   still counts as failed: the card adds a direction and never hides an error. Hermes draws only
   cards written for it (tagged `auto`), from the decks whose Hermes switch is on: the Agent deck out
   of the box. When the error says a server could not be reached, a card about reframing the
-  problem comes first.
+  problem comes first. Calls Hermes stops itself (a tool call that times out in Hermes, a repeated
+  call its guardrail blocks) never reach the plugin, so they neither count nor bring a card.
 - **The Hermes tab.** The switch with one sentence and an example card, **Failed calls before a
   card** (2 to 6), a switch for each deck that has cards written for Hermes, and **What Hermes drew
   lately**: where the turn ran (Desktop chat, Kanban task, Cron job, CLI, Delegated task) and what
@@ -38,7 +39,7 @@ Strategies. The original Oblique Strategies are not included.
   you are in, the chip shows that card's line and a dot until you click it, the next turn starts or
   another chat gets focus. Its popover then asks **Helped** or **Not this time**.
 - **A line under the reply.** On a turn where Hermes drew a card, one line follows the reply: the
-  card itself in Desktop, a plain line on other surfaces.
+  card itself in Desktop, a plain line in other chats. Runs nobody watches get no line.
 - **Six decks, 108 cards.** Agent (24, 19 of them written for Hermes), Human (28), Design, Shaders
   and Writing (16 each), and Coding (8). Cards you mark **Helped** come up a little more often; none
   disappears.
@@ -46,7 +47,10 @@ Strategies. The original Oblique Strategies are not included.
   at once, and **Undo** takes a save back. Tags are optional there. A shipped deck has **Make my own
   copy**; your copy then takes its place. **Versions**, **Export** and **Import a deck file** are
   there too. One **Draw** switch per deck decides whether it shows on the Draw tab, the chip and the
-  palette. When Hermes edits a deck, you see a preview and confirm it first.
+  palette. When Hermes edits a deck, the tool tells it to preview the change and show you the diff
+  before it saves; the plugin cannot make it wait for your answer, and Hermes shows no approval card
+  for deck edits. In an attended chat Hermes can save a deck and switch on its Hermes switch in one
+  turn. Every save keeps a version, and **Undo** or **Versions** takes it back.
 - **Cards everywhere.** `/card` in any chat (no model call), the command palette (**Draw a card**,
   **Draw from <deck>**, **Open Unblockbrücke**), ⌘⌥U (Ctrl+Alt+U), and inline cards with
   `::card{deck="coding" id="co-03"}`.
@@ -54,8 +58,11 @@ Strategies. The original Oblique Strategies are not included.
 ## Install and update
 
 ```bash
-hermes plugins install https://github.com/studioluftbruecke/hermes-unblockbruecke --enable
+hermes plugins install unblockbruecke --enable
 ```
+
+That installs the release the Hermes plugin catalog reviewed and pinned. The Git URL
+(`https://github.com/studioluftbruecke/hermes-unblockbruecke`) installs the newest commit instead.
 
 Hermes Desktop loads the page, the status bar chip and the settings page (`desktop/plugin.js`) from
 the computer it runs on, never from a Hermes on a server. With Hermes on a server, install and
@@ -64,8 +71,8 @@ install covers both.
 
 | Where | Install | Update |
 | --- | --- | --- |
-| Server: tools, hooks, routes | `hermes -p <profile> plugins install https://github.com/studioluftbruecke/hermes-unblockbruecke --enable` | `hermes -p <profile> plugins update unblockbruecke` |
-| Desktop computer: page, status bar chip and settings page | `hermes plugins install https://github.com/studioluftbruecke/hermes-unblockbruecke` | `hermes plugins update unblockbruecke` |
+| Server: tools, hooks, routes | `hermes -p <profile> plugins install unblockbruecke --enable` | `hermes -p <profile> plugins update unblockbruecke` |
+| Desktop computer: page, status bar chip and settings page | `hermes plugins install unblockbruecke` | `hermes plugins update unblockbruecke` |
 
 - After either step on the Desktop computer: Capabilities → Plugins → Rescan. A new install's
   Desktop half arrives switched off; switch it on there.
@@ -104,8 +111,10 @@ settings**. The Hermes tab writes the first two as well; both places read the sa
 most, and each deck's Hermes switch decides. On the first read after the update, a stored
 `autodraw_decks` list sets those switches once.
 
-When nobody is at the keyboard (scheduled jobs, `hermes chat -q`), cards that ask a person
-something are skipped, the agent cannot change your decks, and the settings route refuses to save.
+When nobody is at the keyboard (scheduled jobs, `hermes chat -q` and `-z`, webhooks, the API
+server), or this Hermes version cannot say whether a person is there, cards that ask a person
+something are skipped and the agent cannot change your decks. In a scheduled job or a single-query
+run the settings route refuses to save as well.
 
 ## Your agent
 
@@ -124,26 +133,43 @@ coach with one.
 - **Files:** everything lives in the plugin's data folder
   (`<profile>/plugin-data/agent-plugin-unblockbruecke-…`): your decks and their last 20 versions,
   the deck switches, and the journal of draws (one JSONL file per month, only ever appended). A row
-  for one of Hermes' draws names where the turn ran and whether the next call failed. The agent
-  writes a deck file elsewhere only when it exports to a path you name.
+  for one of Hermes' draws names where the turn ran and whether the next call failed. Outside that
+  folder, the agent's `import` reads a deck file from any path it is given (a file that is not a deck
+  is refused without its content in the answer), and `export` writes a `.yaml` deck file to a folder
+  you name, never over a file that is not a deck. Both work in attended chats only; the page's own
+  import and export go through your browser.
 - **Settings writes:** the page saves settings through its own route,
   `POST /api/plugins/unblockbruecke/setting`. It takes one key per call from a fixed list
   (`autodraw`, `autodraw_threshold`, `card_of_day`, `learning`, `show_in_statusbar`) and refuses
-  every other key, so no secret can pass through it. It writes with Hermes' own plugin-settings
-  writer into the profile's `config.yaml`. It refuses to save in unattended runs (scheduled jobs and
-  single-query runs).
+  every other key, so no secret can pass through it. Hermes writes the value into the profile's
+  `config.yaml`: the route runs `hermes config set plugins.entries.unblockbruecke.settings.<key>
+  <value>` once per click, as an argument list without a shell, with the profile's `HERMES_HOME`, the
+  variables Hermes reads to decide whether it may write (`HERMES_MANAGED`, `HERMES_MANAGED_DIR`,
+  `HERMES_CONFIG_BACKEND` and the container's file mode and owner) and none of the process's secrets in
+  its environment. It then reads the value back through Hermes' config loader, so a save Hermes refused
+  (a managed install, a key your administrator pinned) answers "not allowed". It refuses to save in
+  unattended runs (scheduled jobs and single-query runs).
 - **Agent context:** with **Hermes draws when stuck** on, about 300 characters (the card's back, one
   sentence and a draw id) are added to the failing tool result, so the model reads them. A card the
-  agent draws on request enters its context the same way.
+  agent draws on request enters its context the same way. Card text must pass plain-text rules (no
+  markup, links, shell commands or @mentions); they catch mistakes and the obvious tricks, not every
+  sentence a stranger could write, so auto-draw uses an imported deck only after you switch its
+  Hermes switch on.
 - **Reply line:** the plugin registers a `transform_llm_output` hook. On a turn where it attached a
   card to a tool result, it adds one line after the reply: `::card{...}` in Desktop, which the page
   shows as the card, and a plain line naming the card on other surfaces. The line is stored with the
-  reply. It never holds the stream back, and other replies stay as they are.
-- **Shell commands, child processes, scheduled jobs:** none.
+  reply. It never holds the stream back, and other replies stay as they are. Scheduled jobs, webhooks,
+  the API server and single-query runs get no line. Hermes keeps only the first reply rewrite of a
+  turn: if another plugin also rewrites replies (a redaction plugin, for example), then on a turn with
+  a card either its change or this line is dropped, depending on which plugin loaded first. Keep
+  **Hermes draws when stuck** off if you rely on such a plugin.
+- **Shell commands, child processes, scheduled jobs:** no shell commands and no scheduled jobs. One
+  short-lived child process per saved setting on the page (`hermes config set`, above); nothing
+  else.
 - **Bundled data:** the six decks in `data/decks/`. The plugin contains no text of the original
   Oblique Strategies and no data derived from it; the maintainer checks every deck against them
   before it ships. `desktop/plugin.js` (72 KB) is built from `desktop/src` by `desktop/build/`
-  (`npm ci && node build.mjs`). Hermes' install scan says `safe`; its medium findings are esbuild's
+  (`npm ci`, then `HERMES_SOURCE=<Hermes source> node build.mjs`). Hermes' install scan says `safe`; its medium findings are esbuild's
   character escapes in the bundle, the word `sudo` in the rule that refuses it in cards, and the
   tests that run node.
 - **Credentials:** none.

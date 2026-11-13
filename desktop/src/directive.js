@@ -1,4 +1,4 @@
-// The `card` transcript directive (F4): `::card{deck="coding" id="co-03"}` (optional face="agent")
+// The `card` transcript directive: `::card{deck="coding" id="co-03"}` (optional face="agent")
 // renders the card itself inline in an assistant message. Attributes are untrusted model output: a
 // deck or id that does not match the contract's patterns, an unknown deck or an unknown card renders
 // the directive's source text unchanged. The deck comes from GET /decks/{deck} through React Query, so
@@ -18,7 +18,7 @@ export function validAttrs(attrs) {
   return { deck, id, face }
 }
 
-/** A card view (contract §5) built from a GET /decks/{slug} answer. */
+/** A card view built from a GET /decks/{slug} answer. */
 export function viewFromDeck(deck, id, face) {
   const card = (deck.cards || []).find(c => c.id === id)
   if (!card) return null

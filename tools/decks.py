@@ -1,8 +1,7 @@
-"""`unblockbruecke_decks`: the deck editor for the agent (F12, F13).
+"""`unblockbruecke_decks`: the deck editor for the agent.
 
 Edits always go preview first, then save with the preview's `confirm` value. Writes (save, restore,
-delete, import, switch, export to a path) are refused in a run with nobody at the keyboard
-(constraint 6). Every save keeps a version with author `agent`, so one call undoes it.
+delete, import, switch, export to a path) are refused in a run with nobody at the keyboard. Every save keeps a version with author `agent`, so one call undoes it.
 """
 from __future__ import annotations
 

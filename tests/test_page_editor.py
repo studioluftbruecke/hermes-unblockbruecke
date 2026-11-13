@@ -1,11 +1,11 @@
-"""The Desktop half after the second review pass (round 2, lane UI): each test drives desktop/src in node
-through the stand-ins in test_ui_review.py (same renderer, same `ctx.rest` fake, same deck data).
+"""The Desktop half's editor and notes: each test drives desktop/src in node
+through the stand-ins in test_page.py (same renderer, same `ctx.rest` fake, same deck data).
 
-Skipped without node and desktop/build/node_modules, like test_ui_review.py.
+Skipped without node and desktop/build/node_modules, like test_page.py.
 """
 import pytest
 
-from test_ui_review import EDITOR, MODULES, NODE, run_js
+from test_page import EDITOR, MODULES, NODE, run_js
 
 pytestmark = pytest.mark.skipif(not NODE or not (MODULES / "esbuild").is_dir(),
                                 reason="node and desktop/build/node_modules (npm ci) are needed to run desktop/src")
@@ -14,10 +14,10 @@ HUMAN = "Start with the smallest thing."
 AGENT = "Write the smallest next step and do only that."
 
 
-# ---- P2-UI-06: the first-card draft survives the refusal line -----------------------------------------
+# ---- the first-card draft survives the refusal line -----------------------------------------
 
 def test_new_deck_draft_survives_typing_a_taken_name_letter_by_letter(tmp_path):
-    """P2-UI-06: typing a taken name makes the refusal line come and go; the first card written below it
+    """Typing a taken name makes the refusal line come and go; the first card written below it
     stays as it was through every step."""
     out = run_js(tmp_path, EDITOR + f"""
         button(view.tree, /^New deck$/).props.onClick()
@@ -38,10 +38,10 @@ def test_new_deck_draft_survives_typing_a_taken_name_letter_by_letter(tmp_path):
     assert [s["refused"] for s in out] == [False, False, False, True, False, True, False], out
 
 
-# ---- P2-UI-05: Escape inside an IME composition -------------------------------------------------------
+# ---- Escape inside an IME composition -------------------------------------------------------
 
 def test_escape_during_an_ime_composition_keeps_the_editor_and_the_form(tmp_path):
-    """P2-UI-05: Escape that cancels an IME candidate (isComposing, or keyCode 229) closes nothing; a plain
+    """Escape that cancels an IME candidate (isComposing, or keyCode 229) closes nothing; a plain
     Escape still cancels."""
     out = run_js(tmp_path, EDITOR + """
         const count = id => all(view.tree, n => n.props['data-ubk'] === id).length
@@ -61,7 +61,7 @@ def test_escape_during_an_ime_composition_keeps_the_editor_and_the_form(tmp_path
     assert out == {"composing": 1, "code229": 1, "plain": 0, "formComposing": 1, "formPlain": 0}, out
 
 
-# ---- P2-UI-03, P2-UI-08: what the bar says after an import, and after its Undo ----------------------------
+# ---- what the bar says after an import, and after its Undo ----------------------------
 
 IMPORT = EDITOR + """
 const pick = async name => {
@@ -74,9 +74,9 @@ const undo = async () => { button(view.tree, /^Undo$/).props.onClick(); await vi
 
 
 def test_import_note_and_undo_follow_replaced_and_the_undo_kind(tmp_path):
-    """P2-UI-03: a fresh import (`replaced: false`, undo {delete}) reads "Imported", and its Undo says the
+    """A fresh import (`replaced: false`, undo {delete}) reads "Imported", and its Undo says the
     deck is removed (not "removed again"); a replace (`replaced: true`, undo {restore}) reads "Replaced"
-    and its Undo brings the old version back. P2-UI-08: the notes name the deck, not its file name."""
+    and its Undo brings the old version back. The notes name the deck, not its file name."""
     out = run_js(tmp_path, IMPORT + """
         setAnswer((m, p, b) => {
           if (p === '/decks/import' && b.file_name === 'fresh-one.yaml') return { ok: true, schema: 1, deck: 'fresh-one', source: 'imported', cards: 3, version: 1, replaced: false, undo: { delete: 'fresh-one' }, note: 'Off for auto-draw.' }
@@ -105,7 +105,7 @@ def test_import_note_and_undo_follow_replaced_and_the_undo_kind(tmp_path):
 
 
 def test_notes_after_a_save_and_a_delete_name_the_deck(tmp_path):
-    """P2-UI-08: "Saved", "Deleted" and "Undone" name the deck ("Mine"), not its file name, also after
+    """"Saved", "Deleted" and "Undone" name the deck ("Mine"), not its file name, also after
     the deck has left the list."""
     out = run_js(tmp_path, EDITOR + """
         setAnswer((m, p) => {
@@ -118,7 +118,7 @@ def test_notes_after_a_save_and_a_delete_name_the_deck(tmp_path):
         const bar = () => text(all(view.tree, n => n.props['data-ubk'] === 'undo'))
         one(all(view.tree, n => n.type === 'button' && n.props.className === 'nm' && text(n) === 'Mine'), 'Mine').props.onClick()
         view.render()
-        // M4 (D21): your own deck saves at once, no preview and no second click.
+        // Your own deck saves at once, no preview and no second click.
         all(view.tree, n => n.props['aria-label'] === 'Remove mi-01')[0].props.onClick(); await view.settle(20)
         const res = { saved: bar(), previews: rests.filter(([m, p]) => p.endsWith('/preview')).length }
         button(view.tree, /^Undo$/).props.onClick(); await view.settle()
@@ -135,10 +135,10 @@ def test_notes_after_a_save_and_a_delete_name_the_deck(tmp_path):
     assert out["deleted"].startswith("Deleted Mine."), out["deleted"]
 
 
-# ---- P2-UI-01: New deck never takes a shipped deck's file names --------------------------------------
+# ---- New deck never takes a shipped deck's file names --------------------------------------
 
 def test_new_deck_never_takes_a_shipped_deck_or_its_own_copy_file_name(tmp_path):
-    """P2-UI-01 for 0.2 (M4: the file name is hidden): a new deck named like a deck that comes with the
+    """A new deck named like a deck that comes with the
     plugin is refused with a line that says to make your own copy instead; a name whose file name would
     be a shipped deck's own copy (coding-own) gets another file name, so it never takes that deck's place."""
     out = run_js(tmp_path, """
@@ -159,10 +159,10 @@ def test_new_deck_never_takes_a_shipped_deck_or_its_own_copy_file_name(tmp_path)
     assert out["mineOwn"] == {"problem": "", "slug": "mine-own"} and out["zebra"] == {"problem": "", "slug": "zebra-cards"}, out
 
 
-# ---- P2-UI-04: a failed "Replace mine" -----------------------------------------------------------------
+# ---- a failed "Replace mine" -----------------------------------------------------------------
 
 def test_a_failed_replace_rejects_so_the_dialog_shows_the_error(tmp_path):
-    """P2-UI-04: when the replace fails, the confirm's onConfirm rejects with the plain sentence, so
+    """When the replace fails, the confirm's onConfirm rejects with the plain sentence, so
     Desktop's ConfirmDialog shows it inline and plays no "Done" beat; the import box says it too."""
     out = run_js(tmp_path, IMPORT + """
         setAnswer((m, p, b) => {
@@ -182,10 +182,10 @@ def test_a_failed_replace_rejects_so_the_dialog_shows_the_error(tmp_path):
     assert "the plugin hit an unexpected error" in out["box"]
 
 
-# ---- P2-UI-07: a host refusal the user can act on ----------------------------------------------------
+# ---- a host refusal the user can act on ----------------------------------------------------
 
 def test_host_401_and_413_keep_a_hint_in_the_plain_sentence(tmp_path):
-    """P2-UI-07: a 401 from the host says the user is not signed in to Hermes, a 413 says the file is too
+    """A 401 from the host says the user is not signed in to Hermes, a 413 says the file is too
     large; a short host `detail` is kept; raw server text and FastAPI's detail lists still never show."""
     out = run_js(tmp_path, """
         import { restError } from '@src/core.js'
@@ -209,10 +209,10 @@ def test_host_401_and_413_keep_a_hint_in_the_plain_sentence(tmp_path):
         assert len(v) <= 160, v
 
 
-# ---- P2-UI-10: the shortcut never trusts an old deck list --------------------------------------------
+# ---- the shortcut never trusts an old deck list --------------------------------------------
 
 def test_shortcut_rereads_a_stale_deck_list_before_trusting_it(tmp_path):
-    """P2-UI-10: a cached deck list older than 30 s is read again before the shortcut sends a deck by
+    """A cached deck list older than 30 s is read again before the shortcut sends a deck by
     name; a fresh one is used as it is (no extra GET per press)."""
     out = run_js(tmp_path, """
         import plugin from '@src/index.js'
@@ -248,10 +248,10 @@ def test_shortcut_rereads_a_stale_deck_list_before_trusting_it(tmp_path):
     assert out["stale"] == {"draws": [None], "gets": 1}, out
 
 
-# ---- P2-UI-09: user text takes its direction from the text --------------------------------------------
+# ---- user text takes its direction from the text --------------------------------------------
 
 def test_deck_names_and_diff_lines_carry_dir_auto(tmp_path):
-    """P2-UI-09: the diff list's card lines, the sheet header, the deck list and the Draw tab's deck
+    """The diff list's card lines, the sheet header, the deck list and the Draw tab's deck
     chips set dir="auto" on deck and card text."""
     out = run_js(tmp_path, EDITOR + """
         import { DrawView } from '@src/draw.js'
@@ -287,10 +287,10 @@ def test_deck_names_and_diff_lines_carry_dir_auto(tmp_path):
         assert d and all(x == "auto" for x in d), out["diff"]
 
 
-# ---- P2-UI-02: one count of problems on one screen ----------------------------------------------------
+# ---- one count of problems on one screen ----------------------------------------------------
 
 def test_a_refusal_with_problems_says_how_many_once_above_the_list(tmp_path):
-    """P2-UI-02: when a 422 carries `problems`, the line above the list is a short count ("The deck breaks
+    """When a 422 carries `problems`, the line above the list is a short count ("The deck breaks
     1600 rules:"), not the backend message that repeats the first problems with its own remainder. The
     preview panel does the same. A refusal without problems still shows its message."""
     out = run_js(tmp_path, IMPORT + """

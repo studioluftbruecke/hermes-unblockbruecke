@@ -4,11 +4,11 @@
 // wrapped in :where() so they carry zero specificity and never undo Desktop's component classes.
 //
 // The one exception is the physical card: card stock, ink and the paper's own lines are fixed colours,
-// the same in light and dark, like a printed card on any table. A16 (PLAN-v0.1.3): the front is light
+// the same in light and dark, like a printed card on any table. The front is light
 // stock with dark ink, the back (For Hermes) the reverse; a 1 px edge keeps each card visible on a theme
-// of its own shade. The greys reach 4.5:1 on their face (experiments/unblockbruecke/v0.1.3/contrast.out).
+// of its own shade. The greys reach 4.5:1 on their face.
 // They live only between the card-stock markers below; tests/test_desktop_build.py allows colour
-// literals there and nowhere else. Layout: v0.2/sketches/index.html, layout A.
+// literals there and nowhere else.
 const STOCK = `/* card-stock:start */
 .ubk-card, .ubk-stack { --ubk-stock: #ffffff; --ubk-stock-2: #f2f2f2; --ubk-stock-3: #e6e6e6;
   --ubk-ink: #000000; --ubk-ink-2: #595959; --ubk-ink-3: #6b6b6b;
@@ -137,7 +137,7 @@ const CSS = `${STOCK}
 .ubk .head .tabs { gap: 0; }
 .ubk .body { overflow: auto; min-height: 0; padding: 4px 28px 28px; }
 
-/* Draw tab (sketch A, card stage) */
+/* Draw tab (card stage) */
 .ubk .stage { display: flex; flex-direction: column; align-items: center; gap: 16px; padding-top: 2px; }
 .ubk .stage > .note { text-align: center; }
 .ubk .chips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; max-width: 720px; }
@@ -158,7 +158,7 @@ const CSS = `${STOCK}
 .ubk .lines .ln { font-family: var(--ubk-serif); font-size: 14px; text-wrap: pretty; min-width: 0; }
 .ubk .rate { display: inline-flex; gap: 14px; align-items: center; }
 
-/* Hermes tab (sketch A, a settings column in Desktop's own rows) */
+/* Hermes tab (a settings column in Desktop's own rows) */
 .ubk .hset { max-width: 860px; margin: 0 auto; }
 .ubk .d-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 24px; align-items: center; padding: 12px 0; }
 .ubk .d-row + .d-row { border-top: 1px solid var(--ubk-line); }
@@ -201,7 +201,7 @@ const CSS = `${STOCK}
 .ubk .tbl td.af { color: var(--ubk-muted); min-width: 220px; max-width: 420px; }
 .ubk .tbl td.id { font: 11.5px var(--ubk-mono); color: var(--ubk-faint); white-space: nowrap; }
 .ubk .tbl tr.editing td { background: var(--ubk-sunk); }
-/* Row actions show on hover or keyboard focus (HX-13). */
+/* Row actions show on hover or keyboard focus. */
 .ubk .tbl td.rowacts > * { opacity: 0; transition: opacity .12s; }
 .ubk .tbl tr:hover td.rowacts > *, .ubk .tbl tr:focus-within td.rowacts > * { opacity: 1; }
 .ubk .preview { border: 1px solid var(--ubk-line-2); border-radius: 10px; padding: 12px; display: grid; gap: 8px; }

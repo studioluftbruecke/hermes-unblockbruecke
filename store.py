@@ -34,13 +34,11 @@ class StoreError(Exception):
 
 
 def namespace() -> str:
-    """The folder name Hermes gives `ctx.state.data_dir` for this plugin."""
-    try:
-        from hermes_cli.plugins_manifest import _portable_data_namespace
-
-        return _portable_data_namespace(PLUGIN)
-    except Exception:  # an older Hermes or no Hermes (tests): the same rule, by hand
-        return f"agent-plugin-{PLUGIN}-{hashlib.sha256(PLUGIN.encode()).hexdigest()[:8]}"
+    """The folder name Hermes gives `ctx.state.data_dir` for this plugin, for code that runs without a
+    ctx (the routes). Hermes' rule restated, because its helper is private:
+    `agent-plugin-<slug>-<first 8 hex of sha256(name)>`, and the slug of "unblockbruecke" is the name.
+    tests/test_hermes_surfaces.py checks it against Hermes' own helper whenever Hermes is importable."""
+    return f"agent-plugin-{PLUGIN}-{hashlib.sha256(PLUGIN.encode()).hexdigest()[:8]}"
 
 
 def hermes_home() -> Path:
@@ -55,7 +53,7 @@ def default_root(home: Optional[Path] = None) -> Path:
 
 
 def check_slug(value: str, what: str = "name") -> str:
-    if not isinstance(value, str) or not SLUG_RE.match(value) or ".." in value:
+    if not isinstance(value, str) or not SLUG_RE.fullmatch(value) or ".." in value:
         raise StoreError(f"invalid {what}: {value!r}")
     return value
 

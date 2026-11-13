@@ -1,12 +1,12 @@
-"""The chip in the status bar and its popover (PLAN-v0.2 M3, sketch A), the pressed deck chip the
+"""The chip in the status bar and its popover, the pressed deck chip the
 shortcut and Another draw from, and "Pass it to Hermes", driven in node through the stand-ins in
-test_ui_review.py (same renderer, same `ctx.rest` fake, same deck data).
+test_page.py (same renderer, same `ctx.rest` fake, same deck data).
 
-Skipped without node and desktop/build/node_modules, like test_ui_review.py.
+Skipped without node and desktop/build/node_modules, like test_page.py.
 """
 import pytest
 
-from test_ui_review import MODULES, NODE, run_js
+from test_page import MODULES, NODE, run_js
 
 pytestmark = pytest.mark.skipif(not NODE or not (MODULES / "esbuild").is_dir(),
                                 reason="node and desktop/build/node_modules (npm ci) are needed to run desktop/src")
@@ -88,7 +88,7 @@ def test_with_card_of_the_day_off_the_popover_offers_draw(tmp_path):
 
 
 def test_the_pressed_chip_starts_on_human_and_falls_back_to_all(tmp_path):
-    """His rule: Human on a first run; exactly one chip pressed. A deck list without Human starts on All;
+    """The chip rule: Human on a first run; exactly one chip pressed. A deck list without Human starts on All;
     0.1's `deck` and `deck:<profile>` keys are not carried over."""
     out = run_js(tmp_path, """
         import { ALL, chipList, pressedChip } from '@src/state.js'

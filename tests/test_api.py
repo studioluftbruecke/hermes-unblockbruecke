@@ -1,4 +1,4 @@
-"""M5 routes (contract §5) through api.py, without FastAPI: shapes, statuses, op_id, the seam the
+"""The routes through api.py, without FastAPI: shapes, statuses, op_id, the seam the
 Desktop half reads."""
 import pytest
 
@@ -17,14 +17,14 @@ def api(tmp_path):
 
 def test_health_and_settings(api):
     status, body = api.health()
-    assert status == 200 and body["schema"] == 1 and body["version"] == "0.2.0"
+    assert status == 200 and body["schema"] == 1 and body["version"] == "0.2.1"
     status, body = api.settings_get()
     assert body["settings"]["show_in_sidebar"] is False and body["settings"]["autodraw"] is False
-    assert body["settings"]["show_in_statusbar"] is True, "show_in_statusbar defaults to on (PLAN-v0.1.3 M3)"
+    assert body["settings"]["show_in_statusbar"] is True, "show_in_statusbar defaults to on"
 
 
 def test_retired_show_in_sidebar_is_still_read_and_answered():
-    """Sidebar rows D4/V5: the key left config_schema in 0.1.4 but the old config value is still read
+    """The sidebar row: the key left config_schema in 0.1.4 but the old config value is still read
     and GET /settings answers it, so a Desktop with no stored sidebar choice can seed from it once."""
     settings = sub("settings")
     entry = lambda value: {"plugins": {"entries": {"unblockbruecke": {"settings": {"show_in_sidebar": value}}}}}
@@ -130,14 +130,14 @@ HOSTILE = [
 
 @pytest.mark.parametrize("name,args", HOSTILE, ids=[f"{n}-{i}" for i, (n, _) in enumerate(HOSTILE)])
 def test_wrong_types_answer_400_invalid_in_the_contract_shape(api, name, args):
-    """UI-01: a body of the wrong type is a 4xx refusal in the contract shape, never an exception."""
+    """A body of the wrong type is a 4xx refusal in the contract shape, never an exception."""
     status, body = getattr(api, name)(*args)
     assert 400 <= status < 500, (status, body)
     assert body["ok"] is False and body["schema"] == 1 and isinstance(body["error"], str) and isinstance(body["message"], str)
 
 
 def test_guard_maps_type_and_overflow_errors_to_invalid(api):
-    """UI-01: _guard is the last line of defence for TypeError, AttributeError, ValueError, OverflowError."""
+    """_guard is the last line of defence for TypeError, AttributeError, ValueError, OverflowError."""
     for exc in (TypeError("x"), AttributeError("x"), ValueError("x"), OverflowError("x")):
         def boom(exc=exc):
             raise exc
@@ -171,7 +171,7 @@ def _contract(resp) -> dict:
 
 
 def test_router_answers_bad_json_and_bad_query_in_the_contract_shape(tmp_path):
-    """UI-02: invalid JSON and a bad query param answer in the contract shape, not FastAPI's detail list."""
+    """Invalid JSON and a bad query param answer in the contract shape, not FastAPI's detail list."""
     mod, client = _router_client()
     api = mod._api()
     store = make_store(tmp_path)
@@ -191,7 +191,7 @@ def test_router_answers_bad_json_and_bad_query_in_the_contract_shape(tmp_path):
 
 
 def test_router_never_answers_a_plain_text_500(tmp_path, monkeypatch):
-    """UI-01/UI-12: an unexpected error still answers JSON in the contract shape, without traceback text."""
+    """An unexpected error still answers JSON in the contract shape, without traceback text."""
     mod, client = _router_client()
     api = mod._api()
 

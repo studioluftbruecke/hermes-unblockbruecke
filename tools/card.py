@@ -1,6 +1,6 @@
-"""`unblockbruecke_card`: draw a card, list decks, show one card, read the journal, rate a draw (F5).
+"""`unblockbruecke_card`: draw a card, list decks, show one card, read the journal, rate a draw.
 
-`draw` with `context: "break"` is Eselsbrücke's break contract (PLAN constraint 12, R26 there): the
+`draw` with `context: "break"` is Eselsbrücke's break contract: the
 answer always carries string `title` (the human face) and `text` (the agent face), plus our fields.
 """
 from __future__ import annotations
@@ -55,7 +55,7 @@ def _draw(args: dict, rt) -> dict:
     if context not in draw_mod.CONTEXTS[:4]:
         return {"ok": False, "error": "invalid", "message": "context must be stuck, human, break or any"}
     reason = rt.unattended()
-    # Only a card the agent takes for itself (stuck) must not ask a person who is not there (F7);
+    # Only a card the agent takes for itself (stuck) must not ask a person who is not there;
     # a card drawn for a person (human, break, any) is read by that person later.
     skip_human = bool(reason) and context == "stuck"
     where, platform = rt.where() if rt.author == "agent" else ("", "")

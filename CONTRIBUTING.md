@@ -58,7 +58,7 @@ switch it on, in their agent's context.
 ## Names
 
 - `name` is what people read on the deck chip: one line of 1 to 40 characters, plain text (no HTML,
-  links, backticks, web addresses or shell commands). Keep it short, like the shipped decks: Human,
+  Markdown links, backticks, web addresses, shell commands or @mentions). Keep it short, like the shipped decks: Human,
   Agent, Coding, Writing, Design, Shaders.
 - `deck` is the file name without `.yaml`: 2 to 40 characters of `a` to `z`, `0` to `9` and `-`,
   starting with a letter or a digit. It cannot be the file name of a shipped deck (`human-unblock`,
@@ -66,7 +66,8 @@ switch it on, in their agent's context.
 - In the plugin, a new deck's file name is made from its name, and a name a shipped deck already has
   is refused: open that deck and press **Make my own copy** instead.
 - Card ids share one prefix of 2 to 4 letters, then a dash and two digits (`mx-01`). The human face
-  has at most 90 characters, the agent face at most 220, each on one line.
+  has at most 90 characters, the agent face at most 220, each on one line, under the same plain-text
+  rules as `name`.
 
 ## Marks
 
@@ -92,8 +93,8 @@ pull request template asks you to confirm that the text is your own work.
 
 ## What happens next
 
-Konstantin (Studio Luftbrücke) reads every deck. He may ask for changes, merge it, or decline it with
-a reason. A merged deck ships with the next release of the plugin, with your name in its `by` line.
+The maintainer at Studio Luftbrücke reads every deck and may ask for changes, merge it, or decline it
+with a reason. A merged deck ships with the next release of the plugin, with your name in its `by` line.
 
 ## How pull requests land
 

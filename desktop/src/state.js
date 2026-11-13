@@ -32,14 +32,14 @@ export const setChipMounted = on => {
 }
 
 // ---- the deck chips --------------------------------------------------------------------------------
-// His rules at the sketch (2026-11-12): one fixed order that never moves, exactly one chip pressed (a
+// The chip rules: one fixed order that never moves, exactly one chip pressed (a
 // deck, or All for every deck), Human on a first run, and pressing a chip draws nothing by itself.
 export const ALL = 'all'
 export const FIRST_DECK = 'human-unblock'
 export const CHIP_ORDER = Object.keys(SUBJECT)
 
 /** The chips for a GET /decks list: every deck with its Draw switch on, the six shipped decks first in
- *  his order (an own copy takes its deck's place), then other decks by name, then All. The order
+ *  the fixed order (an own copy takes its deck's place), then other decks by name, then All. The order
  *  depends only on the decks, never on which chip is pressed. */
 export function chipList(decks) {
   const rank = d => {
@@ -129,7 +129,7 @@ export function openPage(view) {
 }
 
 /** The message "Pass it to Hermes" drafts: the card's directive line, the front and the back, so
- *  Hermes starts the move without a lookup (M0 P4's `both` text). */
+ *  Hermes starts the move without a lookup. */
 export const handoffText = card => [
   card.directive || `::card{deck="${card.deck}" id="${card.id}"}`,
   `I drew "${card.human}" (${card.deck_name || card.deck}).`,

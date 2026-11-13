@@ -1,6 +1,5 @@
-"""Review fixes of lane AGENT (v0.1 review): editor, service, auto-draw hook, tools, /card, skill.
-
-Each test names the finding it covers in its docstring and asserts the behaviour the review asked for.
+"""Edges of the agent's surface: editor, service, auto-draw hook, tools, /card and the skill. A docstring
+that starts with "Fixed:" names the wrong behaviour the test guards against.
 """
 import json
 import pathlib
@@ -31,16 +30,6 @@ def switch_entry(store, slug):
     return sub("decks").read_switches(store)["decks"].get(slug)
 
 
-@pytest.fixture
-def stand_in_detector():
-    """Hermes' verdict for the shapes used here, without Hermes on the path."""
-    bridge = sub("bridge")
-    bridge.set_detector(lambda tool, result: (isinstance(result, str) and (
-        '"exit_code": 1' in result or result.startswith("Error")), ""))
-    yield
-    bridge.set_detector(None)
-
-
 def hook_for(tmp_path, settings=None, unattended=None):
     ad = sub("autodraw")
     store = make_store(tmp_path)
@@ -52,10 +41,10 @@ def fail_calls(hook, n, turn="t1", session="s1", result=TERMINAL_FAIL, tool="ter
     return [hook(tool_name=tool, result=result, status="error", turn_id=turn, session_id=session) for _ in range(n)]
 
 
-# --- AGENT-T-export -------------------------------------------------------------------------------
+# --- export never replaces a file that is not a deck ----------------------------------------------
 
 def test_export_never_overwrites_a_file_that_is_not_a_deck(tmp_path):
-    """AGENT-T-export: export with overwrite replaced config.yaml and .bashrc with deck YAML."""
+    """Fixed: export with overwrite replaced config.yaml and .bashrc with deck YAML."""
     store = make_store(tmp_path)
     editor = sub("editor")
     config = tmp_path / "config.yaml"
@@ -73,7 +62,7 @@ def test_export_never_overwrites_a_file_that_is_not_a_deck(tmp_path):
 
 
 def test_export_overwrites_an_existing_deck_file_and_writes_yml(tmp_path):
-    """AGENT-T-export: a deck file may be replaced; .yml and .yaml names may be written."""
+    """A deck file may be replaced; .yml and .yaml names may be written."""
     store = make_store(tmp_path)
     editor = sub("editor")
     old = tmp_path / "design.yaml"
@@ -85,7 +74,7 @@ def test_export_overwrites_an_existing_deck_file_and_writes_yml(tmp_path):
 
 
 def test_agent_export_refusal_is_a_tool_answer(tmp_path):
-    """AGENT-T-export through the tool: a refusal, not a write."""
+    """Export through the tool: a refusal, not a write."""
     ctx = tool_ctx(tmp_path)
     target = tmp_path / "config.yaml"
     target.write_text("secret: keep\n", encoding="utf-8")
@@ -94,10 +83,10 @@ def test_agent_export_refusal_is_a_tool_answer(tmp_path):
     assert target.read_text(encoding="utf-8") == "secret: keep\n"
 
 
-# --- CORE-5 = UI-03, UI-21: the switch travels with delete, restore and import -----------------------
+# --- the switch travels with delete, restore and import -----------------------
 
 def test_import_delete_undo_keeps_imported_and_auto_off(tmp_path):
-    """CORE-5 / UI-03: import, delete, then the offered undo gave source own with auto-draw on."""
+    """Fixed: import, delete, then the offered undo gave source own with auto-draw on."""
     store = make_store(tmp_path)
     editor, decks = sub("editor"), sub("decks")
     editor.import_text(store, yaml_text(deck_doc("bought", prefix="bo")), "user")
@@ -110,7 +99,7 @@ def test_import_delete_undo_keeps_imported_and_auto_off(tmp_path):
 
 
 def test_delete_undo_keeps_an_own_decks_switch(tmp_path):
-    """CORE-5: an own deck switched off for drawing comes back switched off."""
+    """An own deck switched off for drawing comes back switched off."""
     store = make_store(tmp_path)
     editor, decks = sub("editor"), sub("decks")
     edit(store, "mine", {"add": [{"human": "One.", "agent": "Do one thing."}]})
@@ -122,7 +111,7 @@ def test_delete_undo_keeps_an_own_decks_switch(tmp_path):
 
 
 def test_a_new_deck_of_a_deleted_name_does_not_inherit_its_switch(tmp_path):
-    """CORE-5: delete still forgets the live switch; only the version keeps it."""
+    """Delete still forgets the live switch; only the version keeps it."""
     store = make_store(tmp_path)
     editor, decks = sub("editor"), sub("decks")
     editor.import_text(store, yaml_text(deck_doc("bought", prefix="bo")), "user")
@@ -133,7 +122,7 @@ def test_a_new_deck_of_a_deleted_name_does_not_inherit_its_switch(tmp_path):
 
 
 def test_import_replace_answers_an_undo_that_restores_text_source_and_switch(tmp_path):
-    """UI-21: import with replace over the user's own deck gave no undo and left it imported."""
+    """Fixed: import with replace over the user's own deck gave no undo and left it imported."""
     store = make_store(tmp_path)
     editor, decks = sub("editor"), sub("decks")
     saved = edit(store, "mine", {"add": [{"human": "Mine.", "agent": "Do my own thing once."}]})
@@ -149,7 +138,7 @@ def test_import_replace_answers_an_undo_that_restores_text_source_and_switch(tmp
 
 
 def test_import_of_a_new_name_answers_undo_delete(tmp_path):
-    """UI-21: the undo has the same shape as a save's undo."""
+    """The undo has the same shape as a save's undo."""
     store = make_store(tmp_path)
     editor = sub("editor")
     out = editor.import_text(store, yaml_text(deck_doc("bought", prefix="bo")), "user")
@@ -160,7 +149,7 @@ def test_import_of_a_new_name_answers_undo_delete(tmp_path):
 
 
 def test_import_replace_keeps_a_hand_written_deck_as_a_version(tmp_path):
-    """UI-21: a deck file with no saved versions is kept first, so the undo has something to restore."""
+    """A deck file with no saved versions is kept first, so the undo has something to restore."""
     store = make_store(tmp_path)
     editor = sub("editor")
     write_user_deck(store, deck_doc("hand", prefix="ha"))
@@ -171,7 +160,7 @@ def test_import_replace_keeps_a_hand_written_deck_as_a_version(tmp_path):
     assert editor.current_text(store, "hand") == old_text
 
 
-# --- CORE-9: import's and delete's exists checks run inside the store lock ---------------------------
+# --- import's and delete's exists checks run inside the store lock ---------------------------
 
 def _interleave(monkeypatch, store, other):
     """Run `other` in a second thread right after the first catalog read of this thread, and give it
@@ -206,7 +195,7 @@ def _try(fn):
 
 
 def test_two_imports_of_one_new_name_give_one_deck(tmp_path, monkeypatch):
-    """CORE-9: both imports answered ok and the first one survived only as version 1."""
+    """Fixed: both imports answered ok and the first one survived only as version 1."""
     store = make_store(tmp_path)
     editor = sub("editor")
     text = yaml_text(deck_doc("twin", prefix="tw"))
@@ -219,7 +208,7 @@ def test_two_imports_of_one_new_name_give_one_deck(tmp_path, monkeypatch):
 
 
 def test_two_deletes_of_one_deck_give_one_deletion(tmp_path, monkeypatch):
-    """CORE-9: the same applies to delete."""
+    """The same applies to delete."""
     store = make_store(tmp_path)
     editor = sub("editor")
     edit(store, "mine", {"add": [{"human": "One.", "agent": "Do one thing."}]})
@@ -230,11 +219,11 @@ def test_two_deletes_of_one_deck_give_one_deletion(tmp_path, monkeypatch):
     assert sum(1 for v in editor.versions(store, "mine") if v["deleted"]) == 1
 
 
-# --- CORE-4, UI-05: unknown decks are unknown_deck ---------------------------------------------------
+# --- unknown decks are unknown_deck ---------------------------------------------------
 
 @pytest.mark.parametrize("slug", ["../../../etc", "/etc", "Not A Slug", "x"])
 def test_restore_checks_the_slug(tmp_path, slug):
-    """CORE-4: restore of a path-like name raised StoreError (route 500) instead of unknown_deck."""
+    """Fixed: restore of a path-like name raised StoreError (route 500) instead of unknown_deck."""
     store = make_store(tmp_path)
     editor = sub("editor")
     with pytest.raises(editor.EditError) as err:
@@ -243,7 +232,7 @@ def test_restore_checks_the_slug(tmp_path, slug):
 
 
 def test_delete_of_an_unknown_deck_is_unknown_deck(tmp_path):
-    """UI-05: delete of a deck that does not exist answered invalid, the contract says unknown_deck."""
+    """Fixed: delete of a deck that does not exist answered invalid, the contract says unknown_deck."""
     store = make_store(tmp_path)
     editor = sub("editor")
     with pytest.raises(editor.EditError) as err:
@@ -257,10 +246,10 @@ def test_delete_of_an_unknown_deck_is_unknown_deck(tmp_path):
     assert ctx.call("unblockbruecke_decks", action="restore", deck="../x", version=1)["error"] == "unknown_deck"
 
 
-# --- CORE-1c, UI-01, AGENT-T-deck-type, -decks-str, -internal, -limit: argument types -----------------
+# --- argument types -----------------
 
 def test_a_string_where_a_list_goes_is_one_name(tmp_path):
-    """AGENT-T-decks-str: decks "coding" became the letters c, o, d, i, n, g; tags "bug" found no card."""
+    """Fixed: decks "coding" became the letters c, o, d, i, n, g; tags "bug" found no card."""
     ctx = tool_ctx(tmp_path)
     out = ctx.call("unblockbruecke_card", action="draw", decks="coding")
     assert out["ok"] and out["deck"] == "coding"
@@ -271,14 +260,14 @@ def test_a_string_where_a_list_goes_is_one_name(tmp_path):
 @pytest.mark.parametrize("args", [{"deck": 5}, {"deck": ["coding"]}, {"decks": 5}, {"decks": [5]},
                                   {"decks": {"a": 1}}, {"tags": 5}, {"tags": [None]}, {"tags": {"bug": 1}}])
 def test_wrong_draw_argument_types_are_invalid(tmp_path, args):
-    """AGENT-T-deck-type, AGENT-T-internal: deck 5 drew from every deck; decks 5 or tags 5 answered internal."""
+    """Fixed: deck 5 drew from every deck; decks 5 or tags 5 answered internal."""
     ctx = tool_ctx(tmp_path)
     out = ctx.call("unblockbruecke_card", action="draw", **args)
     assert out["ok"] is False and out["error"] == "invalid", out
 
 
 def test_service_refuses_wrong_types_with_value_error(tmp_path):
-    """UI-01 (service part): the route maps ValueError to 400 invalid, so the service raises that."""
+    """The route maps ValueError to 400 invalid, so the service raises that."""
     store = make_store(tmp_path)
     service = sub("service")
     for kwargs in ({"deck": 5}, {"decks": 5}, {"tags": 5}, {"decks": [["coding"]]}):
@@ -289,7 +278,7 @@ def test_service_refuses_wrong_types_with_value_error(tmp_path):
 
 @pytest.mark.parametrize("limit", [float("inf"), 1e999, -1e999, "many", [3], {"n": 1}, True])
 def test_journal_limit_never_internal(tmp_path, limit):
-    """AGENT-T-limit: limit 1e999 answered internal OverflowError."""
+    """Fixed: limit 1e999 answered internal OverflowError."""
     ctx = tool_ctx(tmp_path)
     out = ctx.call("unblockbruecke_card", action="journal", limit=limit)
     assert out["ok"] is True
@@ -310,7 +299,7 @@ ODD_CHANGES = [
 
 @pytest.mark.parametrize("changes", ODD_CHANGES, ids=[str(i) for i in range(len(ODD_CHANGES))])
 def test_odd_changes_are_invalid_never_internal(tmp_path, changes):
-    """CORE-1c, UI-01: meta as a list, remove as an int, an edit with tags 5 raised TypeError (route 500)."""
+    """Fixed: meta as a list, remove as an int, an edit with tags 5 raised TypeError (route 500)."""
     store = make_store(tmp_path)
     editor = sub("editor")
     with pytest.raises((editor.EditError, sub("decks").DeckError)) as err:
@@ -322,7 +311,7 @@ def test_odd_changes_are_invalid_never_internal(tmp_path, changes):
 
 
 def test_a_string_where_a_list_of_changes_goes_is_one_item(tmp_path):
-    """CORE-1c: remove "wr-01" is the list ["wr-01"]; an added card's tags "draft" is ["draft"]."""
+    """Remove "wr-01" is the list ["wr-01"]; an added card's tags "draft" is ["draft"]."""
     store = make_store(tmp_path)
     editor = sub("editor")
     pv = editor.preview(store, "writing", None, {"remove": "wr-01"})
@@ -334,7 +323,7 @@ def test_a_string_where_a_list_of_changes_goes_is_one_item(tmp_path):
 
 
 def test_show_and_import_refuse_non_text_names(tmp_path):
-    """AGENT-T-internal: show with deck or id as a list, import with slug 5, never internal."""
+    """Show with deck or id as a list, import with slug 5, never internal."""
     ctx = tool_ctx(tmp_path)
     for args in ({"deck": ["coding"], "id": "co-01"}, {"deck": "coding", "id": 5}):
         out = ctx.call("unblockbruecke_card", action="show", **args)
@@ -345,10 +334,10 @@ def test_show_and_import_refuse_non_text_names(tmp_path):
     assert err.value.code == "invalid"
 
 
-# --- AGENT-T-echo, AGENT-C-echo: unknown names are echoed short ----------------------------------------
+# --- unknown names are echoed short ----------------------------------------
 
 def test_unknown_deck_names_are_echoed_short(tmp_path):
-    """AGENT-T-echo: a 200000-char deck answered 200138 chars; decks with that string 600136."""
+    """Fixed: a 200000-char deck answered 200138 chars; decks with that string 600136."""
     ctx = tool_ctx(tmp_path)
     long = "x" * 200000
     out = ctx.call("unblockbruecke_card", action="draw", deck=long)
@@ -364,14 +353,14 @@ def test_unknown_deck_names_are_echoed_short(tmp_path):
 
 
 def test_card_command_echoes_an_unknown_name_short(tmp_path):
-    """AGENT-C-echo: /card <100000 chars> answered 100253 chars."""
+    """Fixed: /card <100000 chars> answered 100253 chars."""
     ctx = tool_ctx(tmp_path)
     out = ctx.commands["card"]("x" * 100000)
     assert len(out) < 1000 and "x" * 41 not in out
 
 
 def test_editor_and_deck_tool_echo_short(tmp_path):
-    """AGENT-T-echo: the same cap in the editor (card ids) and unblockbruecke_decks (deck names)."""
+    """The same cap in the editor (card ids) and unblockbruecke_decks (deck names)."""
     ctx = tool_ctx(tmp_path)
     long = "z" * 5000
     for args in ({"action": "get", "deck": long}, {"action": "switch", "deck": long, "draw": False},
@@ -381,10 +370,10 @@ def test_editor_and_deck_tool_echo_short(tmp_path):
         assert out["ok"] is False and len(out["message"]) < 300, (args["action"], len(out["message"]))
 
 
-# --- CORE-13: an empty autodraw_decks means no auto-draw decks (0.2: through the one-time seed) ---------
+# --- an empty autodraw_decks means no auto-draw decks (0.2: through the one-time seed) ---------
 
-def test_empty_autodraw_decks_draws_nothing(tmp_path, stand_in_detector):
-    """CORE-13: autodraw_decks [] still auto-drew from agent-unblock. 0.2: a stored [] seeds every Hermes
+def test_empty_autodraw_decks_draws_nothing(tmp_path):
+    """Fixed: autodraw_decks [] still auto-drew from agent-unblock. 0.2: a stored [] seeds every Hermes
     switch off once."""
     service, decks = sub("service"), sub("decks")
     store = make_store(tmp_path)
@@ -399,7 +388,7 @@ def test_empty_autodraw_decks_draws_nothing(tmp_path, stand_in_detector):
     assert fail_calls(default, 3)[2] is not None
 
 
-# --- AGENT-U-cron: the cron surface is unattended ------------------------------------------------------
+# --- the cron surface is unattended ------------------------------------------------------
 
 class CronCtx:
     def __init__(self, surface, cron):
@@ -419,24 +408,24 @@ BOOM = RuntimeError("ctx call failed over the host wire")
 
 @pytest.mark.parametrize("environ", [{"HERMES_PLUGIN_HOST_PROCESS": "1"}, {}], ids=["host", "in_process"])
 def test_cron_surface_is_unattended_when_the_cron_call_fails(environ):
-    """AGENT-U-cron: surface cron with current_cron_execution() raising counted as attended."""
+    """Fixed: surface cron with current_cron_execution() raising counted as attended."""
     bridge = sub("bridge")
     assert bridge.unattended_reason(CronCtx("cron", BOOM), environ=environ) is not None
     assert bridge.unattended_reason(CronCtx("cron", None), environ=environ) is not None
 
 
 def test_host_mode_counts_a_raising_cron_call_as_unattended():
-    """AGENT-U-cron: in host mode a raising current_cron_execution() fails closed on any surface."""
+    """In host mode a raising current_cron_execution() fails closed on any surface."""
     bridge = sub("bridge")
     assert bridge.unattended_reason(CronCtx("desktop", BOOM), environ={"HERMES_PLUGIN_HOST_PROCESS": "1"})
     assert bridge.unattended_reason(CronCtx("desktop", None), environ={"HERMES_PLUGIN_HOST_PROCESS": "1"}) is None
     assert bridge.unattended_reason(CronCtx("desktop", BOOM), environ={}) is None  # in-process: the env markers decide
 
 
-# --- AGENT-H-session: no turn_id, no auto-draw ----------------------------------------------------------
+# --- no turn_id, no auto-draw ----------------------------------------------------------
 
-def test_no_turn_id_means_no_auto_draw(tmp_path, stand_in_detector):
-    """AGENT-H-session: with turn_id empty the session_id was the key, so after one card that session
+def test_no_turn_id_means_no_auto_draw(tmp_path):
+    """Fixed: with turn_id empty the session_id was the key, so after one card that session
     never got another. Auto-draw now counts per turn only and skips calls without a turn_id."""
     hook, store = hook_for(tmp_path, {"autodraw": True})
     out = fail_calls(hook, 6, turn="", session="only-session")
@@ -445,10 +434,10 @@ def test_no_turn_id_means_no_auto_draw(tmp_path, stand_in_detector):
     assert fail_calls(hook, 3, turn="t-real", session="only-session")[2] is not None
 
 
-# --- AGENT-H-rate: an auto-drawn card can be rated ------------------------------------------------------
+# --- an auto-drawn card can be rated ------------------------------------------------------
 
-def test_auto_card_carries_its_draw_id_in_json(tmp_path, stand_in_detector):
-    """AGENT-H-rate: the auto card payload had no draw_id, so the agent could not rate it."""
+def test_auto_card_carries_its_draw_id_in_json(tmp_path):
+    """Fixed: the auto card payload had no draw_id, so the agent could not rate it."""
     ctx = tool_ctx(tmp_path, autodraw=True)
     hook = ctx.hooks["transform_tool_result"]
     out = fail_calls(hook, 3)[2]
@@ -459,8 +448,8 @@ def test_auto_card_carries_its_draw_id_in_json(tmp_path, stand_in_detector):
     assert rated["ok"] and rated["rated"]["draw_id"] == payload["draw_id"]
 
 
-def test_auto_card_carries_its_draw_id_in_plain_text(tmp_path, stand_in_detector):
-    """AGENT-H-rate: the plain-text line names the draw_id too."""
+def test_auto_card_carries_its_draw_id_in_plain_text(tmp_path):
+    """The plain-text line names the draw_id too."""
     hook, store = hook_for(tmp_path, {"autodraw": True})
     out = fail_calls(hook, 3, result=PLAIN_FAIL, tool="web_extract")[2]
     line = out.split("\n\n")[-1]
@@ -468,18 +457,17 @@ def test_auto_card_carries_its_draw_id_in_plain_text(tmp_path, stand_in_detector
     assert line.startswith("[unblockbruecke]") and f"draw_id {row['draw_id']}" in line
 
 
-def test_a_shape_that_takes_no_card_is_journaled_as_not_offered(tmp_path, stand_in_detector):
-    """AGENT-H-rate / AGENT-H-attached: a result shape that takes no card leaves the result alone and
+def test_a_shape_that_takes_no_card_is_journaled_as_not_offered(tmp_path):
+    """A result shape that takes no card leaves the result alone and
     the journal row says attached false."""
     hook, store = hook_for(tmp_path, {"autodraw": True})
-    sub("bridge").set_detector(lambda tool, result: (True, ""))
     out = fail_calls(hook, 3, result=json.dumps([{"error": "x"}]))
     assert out == [None, None, None]
     row = sub("journal").draws(store)[0]
     assert row["attached"] is False
 
 
-# --- AGENT-H-cost: auto-draw off reads one setting ------------------------------------------------------
+# --- auto-draw off reads one setting ------------------------------------------------------
 
 class CountingCtx(FakeCtx):
     def __init__(self, *a, **k):
@@ -491,8 +479,8 @@ class CountingCtx(FakeCtx):
         return super().get_config(key, default)
 
 
-def test_autodraw_off_reads_only_the_autodraw_setting(tmp_path, stand_in_detector):
-    """AGENT-H-cost: every tool call read all 7 settings before checking autodraw (7 IPC round trips
+def test_autodraw_off_reads_only_the_autodraw_setting(tmp_path):
+    """Every tool call read all 7 settings before checking autodraw (7 IPC round trips
     per call under plugins.isolation: host)."""
     ctx = CountingCtx(tmp_path / "data")
     load_plugin().register(ctx)
@@ -505,14 +493,14 @@ def test_autodraw_off_reads_only_the_autodraw_setting(tmp_path, stand_in_detecto
     assert "autodraw_threshold" in ctx.reads  # on: the rest is read as before
 
 
-# --- AGENT-D-catalog, AGENT-D-copy: descriptions lead with their actions ---------------------------------
+# --- descriptions lead with their actions ---------------------------------
 
 CATALOG = 78  # characters of a description the deferred-tool catalog shows
 
 
 @pytest.mark.parametrize("tool", ["unblockbruecke_card", "unblockbruecke_decks"])
 def test_every_action_is_in_the_catalog_head(tmp_path, tool):
-    """AGENT-D-catalog: 0/5 and 0/10 actions were inside the first 78 characters."""
+    """Fixed: 0 of 5 and 0 of 10 actions were inside the first 78 characters."""
     ctx = tool_ctx(tmp_path)
     reg = ctx.tools[tool]
     head = reg["description"][:CATALOG]
@@ -522,7 +510,7 @@ def test_every_action_is_in_the_catalog_head(tmp_path, tool):
 
 @pytest.mark.parametrize("tool", ["unblockbruecke_card", "unblockbruecke_decks"])
 def test_no_description_sentence_over_160_characters(tmp_path, tool):
-    """AGENT-D-copy: sentences of 239 (card) and 555 (decks) characters."""
+    """Sentences of 239 (card) and 555 (decks) characters."""
     ctx = tool_ctx(tmp_path)
     desc = ctx.tools[tool]["description"]
     assert [s for s in re.split(r"(?<=[.!?])\s+", desc) if len(s) > 160] == []
@@ -530,7 +518,7 @@ def test_no_description_sentence_over_160_characters(tmp_path, tool):
 
 
 def test_the_change_format_moved_to_the_parameter_and_the_rules_to_the_refusal(tmp_path):
-    """AGENT-D-copy: the change format lives in the changes parameter, not the description. 0.2 (AX-9):
+    """The change format lives in the changes parameter, not the description. 0.2:
     the card rules left the skill, so a refused preview must name the rule the card broke."""
     ctx = tool_ctx(tmp_path)
     schema = ctx.tools["unblockbruecke_decks"]["schema"]
@@ -540,20 +528,20 @@ def test_the_change_format_moved_to_the_parameter_and_the_rules_to_the_refusal(t
     assert out["ok"] is False and "at most 90" in out["message"] and out["problems"][0]["rule"] == "length_human"
 
 
-# --- AGENT-S-plain, AGENT-S-threshold: the skill describes auto-draw as it works ---------------------------
+# --- the skill describes auto-draw as it works ---------------------------
 
 def skill_text():
     return (pathlib.Path(sub("decks").PLUGIN_ROOT) / "skills" / "unblockbruecke" / "SKILL.md").read_text(encoding="utf-8")
 
 
 def test_skill_names_both_card_shapes():
-    """AGENT-S-plain: the skill said the card always arrives under the key unblockbruecke_card."""
+    """Fixed: the skill said the card always arrives under the key unblockbruecke_card."""
     text = skill_text()
     assert "`unblockbruecke_card`" in text and "[unblockbruecke]" in text and "draw_id" in text
 
 
 def test_skill_says_the_threshold_is_a_setting():
-    """AGENT-S-threshold: the skill hard-coded three failed calls."""
+    """Fixed: the skill hard-coded three failed calls."""
     text = skill_text()
     assert "three failed tool calls" not in text.lower() and "third failing" not in text.lower()
     assert "autodraw_threshold" in text and "default 3" in text
@@ -572,7 +560,7 @@ def api(tmp_path):
 
 
 def test_routes_answer_the_contract_codes(api):
-    """UI-01, UI-05, CORE-4, UI-21 at the route: 400 invalid, 404 unknown_deck, an undo on import."""
+    """400 invalid, 404 unknown_deck, an undo on import."""
     for body in ({"decks": 5}, {"deck": ["coding"]}, {"decks": [5]}):
         status, out = api.draw(body)
         assert status == 400 and out["error"] == "invalid", (body, status, out)

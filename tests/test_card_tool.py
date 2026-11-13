@@ -1,4 +1,4 @@
-"""M2: the agent tool, `/card`, the skill, and Eselsbrücke's break contract (constraint 12)."""
+"""The agent tool, `/card`, the skill, and Eselsbrücke's break contract."""
 import json
 from typing import Any, Callable, Optional
 
@@ -98,7 +98,7 @@ def test_card_command(tmp_path):
     assert rows[-1]["session_id"] == "s-9" and {r["by"] for r in rows} == {"user"}
 
 
-# --- Eselsbrücke's contract (R26 there), copied from feat/eselsbruecke/v0.1 plugins/eselsbruecke/tips.py
+# --- Eselsbrücke's break contract, as Eselsbrücke's tips.py calls it
 CARD_TOOL = "unblockbruecke_card"
 CARD_ARGS = {"action": "draw", "context": "break"}
 

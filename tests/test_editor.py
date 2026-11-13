@@ -1,4 +1,4 @@
-"""M4: the deck editor (preview, save, versions, restore, delete, import, export), switches, the agent's
+"""The deck editor (preview, save, versions, restore, delete, import, export), switches, the agent's
 `unblockbruecke_decks`, and `check_deck.py` against the bad fixtures."""
 import importlib.util
 import json
@@ -54,7 +54,7 @@ def test_a_new_deck_is_drawable_at_once_and_versions_restore(tmp_path):
 
 
 def test_confirm_ignores_key_order(tmp_path):
-    """Found live (M4): the model sent the same deck with its keys sorted, and save answered stale_preview."""
+    """Found live: the model sent the same deck with its keys sorted, and save answered stale_preview."""
     store = make_store(tmp_path)
     editor = sub("editor")
     content = {"name": "Mine", "glossary": {"music": "Music work.", "constraint": "Removes an option."},
@@ -217,7 +217,7 @@ def test_agent_writes_refused_unattended(tmp_path, monkeypatch):
     assert not list(tmp_path.glob("*.yaml"))
 
 
-# --- check_deck.py on the bad fixtures (F14) ------------------------------------------------------
+# --- check_deck.py on the bad fixtures ------------------------------------------------------
 
 @pytest.mark.parametrize("name,rule", [("html", "html"), ("url", "url"), ("too-long", "length_human"),
                                        ("duplicate-id", "id"), ("missing-face", "length_agent")])

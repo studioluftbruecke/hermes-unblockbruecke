@@ -1,18 +1,18 @@
-"""Plugin settings with their defaults (PLAN constraint 4).
+"""Plugin settings with their defaults.
 
 `ctx.get_config` applies no `config_schema` defaults, so every read goes through `read()` with the
 `DEFAULTS` below, and numbers are clamped here. `tests/test_autodraw.py` checks `DEFAULTS` against
-`plugin.yaml`. Settings are read on every call (Q5: a `config set` applies on the next tool call).
+`plugin.yaml`. Settings are read on every call (a `config set` applies on the next tool call).
 
 `RETIRED` keys left `config_schema` (Hermes' settings form) but are still read:
-- `show_in_sidebar` (0.1.4, sidebar rows D4): the sidebar switch moved to the Desktop (per computer,
-  ctx.storage), and a Desktop with no stored choice seeds it once from `GET /settings` (V5), so the old
+- `show_in_sidebar` (left in 0.1.4): the sidebar switch moved to the Desktop (per computer,
+  ctx.storage), and a Desktop with no stored choice seeds it once from `GET /settings`, so the old
   value stays readable there.
-- `autodraw_decks` (0.2, AX-6): each deck's Hermes switch decides. A stored list seeds those switches
+- `autodraw_decks` (left in 0.2.0): each deck's Hermes switch decides. A stored list seeds those switches
   once (`decks.seed_hermes_switches`); no answer shows it.
-`autodraw_per_turn` (0.2, AX-8) is gone: one card per turn, always.
+`autodraw_per_turn` (left in 0.2.0) is gone: one card per turn, always.
 
-`SETTABLE`: the keys the page may write through `POST /setting` (R10: five keys, no secret).
+`SETTABLE`: the keys the page may write through `POST /setting` (five keys, no secret).
 """
 from __future__ import annotations
 
@@ -122,6 +122,16 @@ def read_from_config_file(home_config: Any) -> dict:
         return default
 
     return read(get)
+
+
+def saved_value(key: str) -> Any:
+    """The value the bound profile's config now holds for one setting (None when unset), read through
+    Hermes' loader, so an administrator's pinned value counts as what is in force."""
+    from hermes_cli.config import load_config_readonly
+
+    entry = (((load_config_readonly() or {}).get("plugins") or {}).get("entries") or {}).get("unblockbruecke") or {}
+    values = entry.get("settings") if isinstance(entry, dict) else None
+    return values.get(key) if isinstance(values, dict) else None
 
 
 def load_route_settings() -> dict:

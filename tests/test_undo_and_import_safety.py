@@ -1,4 +1,4 @@
-"""Round 2 of the review fixes, lane SAFETY: undo never throws away text the user wrote by hand,
+"""Undo never throws away text the user wrote by hand,
 an import says whether it replaced a deck, export stays out of the plugin's own files, the host-mode
 unattended reason, and short rule messages."""
 import pathlib
@@ -41,10 +41,10 @@ def broken_hand_file(store):
     return path, path.read_text(encoding="utf-8")
 
 
-# --- P2-SAFETY-hand-save-undo, -broken-overwrite, -hand-after-delete: hand-written text is kept -------
+# --- hand-written text is kept -------
 
 def test_first_save_over_a_hand_written_deck_undoes_to_the_hand_text(tmp_path):
-    """P2-SAFETY-hand-save-undo: the first editor save answered undo {delete}, which threw the hand text away."""
+    """Fixed: the first editor save answered undo {delete}, which threw the hand text away."""
     store = make_store(tmp_path)
     write_user_deck(store, deck_doc(SLUG, prefix="mi", license="own", name="Hand made"))
     out = save_doc(store, deck_doc(SLUG, prefix="mi", license="own", name="Edited"))
@@ -64,7 +64,7 @@ def test_a_hand_edit_after_a_save_is_kept_before_the_next_save(tmp_path):
 
 
 def test_save_over_a_broken_hand_file_needs_replace_and_keeps_it(tmp_path):
-    """P2-SAFETY-broken-overwrite (save): a hand file that breaks a rule is not in the catalog, and a save of
+    """A hand file that breaks a rule is not in the catalog, and a save of
     a new deck of that name overwrote it without a version."""
     store = make_store(tmp_path)
     editor = sub("editor")
@@ -96,7 +96,7 @@ def test_agent_save_over_a_broken_hand_file_needs_replace(tmp_path):
 
 
 def test_import_over_a_broken_hand_file_needs_replace_and_keeps_it(tmp_path):
-    """P2-SAFETY-broken-overwrite (import): import without replace was ok and answered undo {delete}."""
+    """Fixed: import without replace was ok and answered undo {delete}."""
     store = make_store(tmp_path)
     editor = sub("editor")
     path, hand = broken_hand_file(store)
@@ -111,7 +111,7 @@ def test_import_over_a_broken_hand_file_needs_replace_and_keeps_it(tmp_path):
 
 
 def test_import_replace_over_a_hand_file_written_after_a_delete_keeps_it(tmp_path):
-    """P2-SAFETY-hand-after-delete: the index ended with a deletion row, so the hand file was not kept."""
+    """Fixed: the index ended with a deletion row, so the hand file was not kept."""
     store = make_store(tmp_path)
     editor = sub("editor")
     save_doc(store, deck_doc(SLUG, prefix="mi", license="own"))
@@ -136,7 +136,7 @@ def test_restore_over_a_hand_edit_keeps_it_and_undo_brings_it_back(tmp_path):
 
 
 def test_undo_of_a_restore_that_brought_a_deleted_deck_back_removes_it(tmp_path):
-    """P2-SAFETY-restore-undo: that undo restored the deletion row's text, so the deck stayed."""
+    """Fixed: that undo restored the deletion row's text, so the deck stayed."""
     store = make_store(tmp_path)
     editor = sub("editor")
     save_doc(store, deck_doc(SLUG, prefix="mi", license="own"))
@@ -147,10 +147,10 @@ def test_undo_of_a_restore_that_brought_a_deleted_deck_back_removes_it(tmp_path)
     assert SLUG not in sub("decks").catalog(store)["decks"]
 
 
-# --- P2-UI-03 (import undo), P2-SAFETY-reimport-undo: the import answer and its undo -----------------
+# --- the import answer and its undo -----------------------------------------------------------------
 
 def test_a_fresh_import_says_it_replaced_nothing_and_undo_deletes(tmp_path):
-    """P2-UI-03: the Desktop read every import with an undo as a replace. `replaced` says which it was."""
+    """Fixed: the Desktop read every import with an undo as a replace. `replaced` says which it was."""
     store = make_store(tmp_path)
     out = import_doc(store, deck_doc("fresh-one", prefix="fr"))
     assert out["replaced"] is False and out["undo"] == {"delete": "fresh-one"}
@@ -171,7 +171,7 @@ def test_an_import_over_a_broken_hand_file_counts_as_a_replace(tmp_path):
 
 
 def test_undo_of_a_re_import_brings_back_the_auto_switch(tmp_path):
-    """P2-SAFETY-reimport-undo: an imported deck switched auto on, re-imported, undone: auto stayed off."""
+    """An imported deck switched auto on, re-imported, undone: auto stayed off."""
     store = make_store(tmp_path)
     decks = sub("decks")
     import_doc(store, deck_doc(SLUG, prefix="mi", name="First import"))
@@ -194,7 +194,7 @@ def test_a_plain_restore_keeps_todays_switch(tmp_path):
     assert decks.catalog(store)["decks"][SLUG]["switch"]["auto"] is False
 
 
-# --- P2-SAFETY-export-store: export never writes into the plugin's data or its own folder ------------
+# --- export never writes into the plugin's data or its own folder ------------
 
 def test_export_refuses_the_plugin_data_dir(tmp_path):
     """Export with overwrite replaced another deck's file and a kept version, with no version written."""
@@ -247,7 +247,7 @@ def test_export_still_writes_outside(tmp_path):
     assert pathlib.Path(out["written"]) == tmp_path / "design.yaml"
 
 
-# --- P2-SAFETY-host-cron-reason: a host-mode ctx that cannot answer the cron question ----------------
+# --- a host-mode ctx that cannot answer the cron question ----------------
 
 class NoCronCtx:
     """An older Hermes: the ctx has no current_cron_execution."""
@@ -293,7 +293,7 @@ def test_in_process_without_a_cron_method_the_session_markers_decide(monkeypatch
     assert bridge.unattended_reason(NoCronCtx("telegram"), environ={}) == "a scheduled job"
 
 
-# --- P2-UI 422 message and "file name": short rule messages that count like problems_more ----------
+# --- the 422 message and "file name": short rule messages that count like problems_more ----------
 
 def many_broken_cards(n=60):
     return [card(i, prefix="mi", human="<b>x</b>", agent="Run `ls`") for i in range(1, n + 1)]  # 2 problems each
@@ -328,7 +328,7 @@ def test_a_short_refusal_names_every_problem_without_a_remainder(tmp_path):
 
 
 def test_editor_messages_say_file_name_not_slug(tmp_path):
-    """P2-UI-11: the Desktop field is "File name"; the backend said "(slug)" and "deck name"."""
+    """Fixed: the Desktop field is "File name"; the backend said "(slug)" and "deck name"."""
     store = make_store(tmp_path)
     editor = sub("editor")
     messages = []

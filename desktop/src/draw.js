@@ -1,4 +1,4 @@
-// The Draw tab (0.2 sketch A, "card stage"): the deck chips in his fixed order with exactly one
+// The Draw tab, a card stage: the deck chips in one fixed order with exactly one
 // pressed, the card in the middle, one action after a draw ("Pass it to Hermes") and "Draw another",
 // and under the card a short list: your earlier draws (the one before asks "Helped" or "Not this
 // time" once) or the cards that helped. Keys: F turns the card, D draws.
@@ -11,7 +11,7 @@ import { $asking, $drawing, $pressedRev, $rated, $session, $table, ALL, chipList
 import { Btn, Card, CardBack, h, hk, Mark } from './ui.js'
 
 const isEditable = el => !!el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))
-// Earlier draws shown under the card (sketch A: two lines).
+// Earlier draws shown under the card (two lines).
 const EARLIER = 2
 
 /** The row of deck chips. `pressed` is the one pressed key; a press changes the choice only. */

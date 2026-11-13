@@ -1,7 +1,7 @@
 """The routes' logic, without FastAPI, so tests call it directly: each function returns (status, body).
 
 `dashboard/plugin_api.py` only adapts these to FastAPI. Every body carries `schema`; errors are
-`{ok: false, schema, error, message, problems?}` (contract §5). These are the user's own clicks
+`{ok: false, schema, error, message, problems?}`. These are the user's own clicks
 (author `user`), so no unattended check runs here; for every profile except the dashboard's own,
 routes run in the profile's plugin host child. Writes take an optional `op_id`: a repeat answers
 `duplicate: true` and changes nothing.
@@ -9,12 +9,15 @@ routes run in the profile's plugin host child. Writes take an optional `op_id`: 
 from __future__ import annotations
 
 import logging
+import os
 import re
+import subprocess
+import sys
 from pathlib import Path
 from typing import Any, Callable, Optional
 
 from . import bridge, decks as decks_mod, draw as draw_mod, editor, journal, service, settings as settings_mod
-from .store import Store, StoreError, default_root
+from .store import Store, StoreError, default_root, hermes_home
 
 SCHEMA = 1
 OPS_FILE = "ops.json"
@@ -31,12 +34,39 @@ def _version() -> str:
 
 VERSION = _version()
 
-def _save_setting(key: str, value: Any) -> None:
-    """Hermes' own writer for one plugin setting (the profile's config.yaml, under its lock); raises
-    PermissionError where Hermes refuses (managed install, administrator-managed key)."""
-    from hermes_cli.plugins_state import save_plugin_setting
+# Hermes' public CLI, run by the Python that runs this process (so the same Hermes install), as an
+# argument list without a shell.
+HERMES_CLI = [sys.executable, "-m", "hermes_cli.main"]
+# The child gets only what the CLI needs, never the secrets this process holds.
+CHILD_ENV = ("PATH", "HOME", "LANG", "LC_ALL", "LC_CTYPE", "TZ", "PYTHONPATH", "VIRTUAL_ENV", "TMPDIR")
+# What Hermes reads to find the profile's config and to decide whether it may write it (a managed install,
+# an administrator's pinned keys, a remote config backend, the file modes and owner a container wants), so
+# Hermes' own refusals hold in the child. None of them holds a secret.
+HERMES_WRITE_ENV = ("HERMES_MANAGED", "HERMES_MANAGED_DIR", "HERMES_CONFIG_BACKEND", "HERMES_DEV", "HERMES_CONTAINER",
+                    "HERMES_SKIP_CHMOD", "HERMES_HOME_MODE", "HERMES_UID", "HERMES_GID")
+SAVE_TIMEOUT_S = 60
+NOT_SAVED = "Hermes did not save the setting; the profile's config holds another value"
 
-    save_plugin_setting("unblockbruecke", (key,), value)
+
+def _save_setting(key: str, value: Any) -> None:
+    """`hermes config set plugins.entries.unblockbruecke.settings.<key> <value>` for the profile whose home
+    is bound now: Hermes writes its own config.yaml, under its own lock. Raises PermissionError with
+    Hermes' reason when it refuses (a managed install, an administrator-managed key)."""
+    text = ("true" if value else "false") if isinstance(value, bool) else str(value)
+    env = {name: os.environ[name] for name in (*CHILD_ENV, *HERMES_WRITE_ENV) if name in os.environ}
+    env["HERMES_HOME"] = str(hermes_home())
+    run = subprocess.run([*HERMES_CLI, "config", "set", f"plugins.entries.unblockbruecke.settings.{key}", text],
+                         env=env, stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=SAVE_TIMEOUT_S)
+    if run.returncode != 0:
+        lines = [line.strip() for line in (run.stdout + "\n" + run.stderr).splitlines() if line.strip()]
+        reason = lines[-1].lstrip("✗ ").strip() if lines else f"hermes config set exited with {run.returncode}"
+        raise PermissionError(reason[:300])
+    # A managed install makes `config set` print its refusal and exit 0, so the value Hermes now holds decides.
+    got = settings_mod.saved_value(key)
+    if type(got) is not type(value) or got != value:
+        said = [line.strip().lstrip("✗ ").strip() for line in run.stderr.splitlines()
+                if line.strip() and not line.strip().startswith("⚠")]
+        raise PermissionError((said[0] if said else NOT_SAVED)[:300])
 
 
 # Tests point these at a temp folder and fixed settings; in Hermes they follow the bound home per call.
@@ -151,7 +181,7 @@ def _once(s: Store, body: dict, fn: Callable[[], "tuple[int, dict]"]) -> "tuple[
     op_id = body.get("op_id")
     if op_id is None:
         return fn()
-    if not isinstance(op_id, str) or not OP_RE.match(op_id):
+    if not isinstance(op_id, str) or not OP_RE.fullmatch(op_id):
         raise ValueError("op_id must be 1 to 80 letters, digits, '.', '_', ':' or '-'")
     with s.lock():
         seen = s.read_json(OPS_FILE, default=[]) or []
@@ -189,7 +219,7 @@ def deck_get(slug: str) -> "tuple[int, dict]":
     cat = decks_mod.catalog(s)
     deck = cat["decks"].get(slug)
     if deck is None:
-        return fail(404, "unknown_deck", f"no deck named {slug}")
+        return fail(404, "unknown_deck", f"no deck named {service.echo(slug)}")
     stats = journal.stats(s)
     out = decks_mod.deck_summary(deck)
     for key in ("voice", "glossary"):
@@ -248,7 +278,7 @@ SUMMARY_KEYS = ("deck", "name", "mark", "source", "switch", "cards", "auto_cards
 
 
 def _settings_body() -> dict:
-    """GET /settings (contract 0.2 § 2): the settings, the keys the page may write, each deck's two
+    """GET /settings: the settings, the keys the page may write, each deck's two
     switches, the decks Hermes draws from now and the example card under the switch."""
     s, st = store(), _settings_factory()
     _seeded(s, st)
@@ -271,7 +301,7 @@ def settings_get() -> "tuple[int, dict]":
 
 @_guard
 def setting_set(body: Any) -> "tuple[int, dict]":
-    """POST /setting (R10): one of five keys, a person's click only. Saved through Hermes' writer."""
+    """POST /setting: one of five keys, a person's click only. Saved through Hermes' CLI."""
     body = _body(body)
     key = body.get("key")
     if key not in settings_mod.SETTABLE:
@@ -289,8 +319,6 @@ def setting_set(body: Any) -> "tuple[int, dict]":
             _setting_saver(key, value)
         except PermissionError as exc:
             return fail(403, "not_allowed", str(exc) or "Hermes does not allow changing this setting here.")
-        except ImportError:
-            return fail(501, "not_supported", "This Hermes cannot save a setting from a page. Set it in Hermes' settings.")
         except Exception as exc:  # noqa: BLE001 - the page needs a code, the log keeps the rest
             log.info("unblockbruecke: saving %s failed: %r", key, exc)
             return fail(500, "save_failed", f"The setting was not saved ({type(exc).__name__}).")
@@ -417,7 +445,7 @@ def switch(body: Any) -> "tuple[int, dict]":
     def run():
         _seeded(s, _settings_factory())
         if slug not in decks_mod.catalog(s)["decks"]:
-            return fail(404, "unknown_deck", f"no deck named {slug}")
+            return fail(404, "unknown_deck", f"no deck named {service.echo(slug)}")
         decks_mod.set_switch(s, slug, draw=body.get("draw"), auto=body.get("auto"))
         return ok({"deck": slug, "switch": decks_mod.catalog(s)["decks"][slug]["switch"]})
     return _once(s, body, run)

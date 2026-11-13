@@ -1,26 +1,26 @@
-"""Hermes draws when stuck (F6, F7; 0.2 M2): the `transform_tool_result` hook.
+"""Hermes draws when stuck: the `transform_tool_result` hook.
 
 When the setting `autodraw` is on and `autodraw_threshold` of the last `threshold + 2` tool calls of a
-turn failed (D16: 3 of the last 5 by default; any tools), the failing result that reaches the count
-carries one card. One card per turn (AX-8). The count stays per turn: M0 P1 found no fire that carrying
-it across the turns of a chat adds (D17 not supported).
+turn failed (3 of the last 5 by default; any tools), the failing result that reaches the count
+carries one card. One card per turn. The count stays per turn: in recorded sessions, carrying it
+across the turns of a chat added no card that a per-turn count missed.
 
-- Failure is Hermes' own verdict (`bridge.failed`, constraint 2), never a parse of the result.
+- Failure is Hermes' own verdict, the hook's `status` argument (`bridge.failed`), never a parse of the result.
 - The card goes in as a `unblockbruecke_card` key of a JSON object result, or as one bracketed line
-  after a plain-text result; any other shape is left alone (constraint 1, U4), so Hermes still
+  after a plain-text result; any other shape is left alone, so Hermes still
   counts the call as failed and its own guardrail still fires on it.
-- Only cards tagged `auto` from decks whose Hermes switch is on (AX-6). A card whose tags fit the kind
-  of failure is preferred (AX-3, M0 P5: for an unreachable upstream the `reframe` cards); the kind is
+- Only cards tagged `auto` from decks whose Hermes switch is on. A card whose tags fit the kind
+  of failure is preferred (for an unreachable upstream the `reframe` cards); the kind is
   read from the error text only to choose among `auto` cards, never to decide whether the call failed.
-- What the agent reads is short (AX-7): the card, one sentence, the `draw_id`.
+- What the agent reads is short: the card, one sentence, the `draw_id`.
 - State is an in-memory LRU of the last 512 turn ids behind a lock; a call without a `turn_id`
   (Hermes sets one on every agent turn; execute_code's inner calls have none) is skipped. Parallel
   tool batches count in completion order, and the slot for a card is reserved under the lock, so N
-  concurrent failures give exactly one card (constraint 3).
-- The hook is fail-open: any exception returns None (no change) (constraint 4).
-- With nobody at the keyboard, cards tagged `human` are left out (constraint 6).
+  concurrent failures give exactly one card.
+- The hook is fail-open: any exception returns None (no change).
+- With nobody at the keyboard, cards tagged `human` are left out.
 - The journal gets the draw with where the turn ran, and for the next call of the same turn its
-  status as a fact (`next_call`), plus the calls the turn needed until one worked (F10). Tool arguments
+  status as a fact (`next_call`), plus the calls the turn needed until one worked. Tool arguments
   are never logged. The draw row's `attached` means offered: this hook returned the result with the
   card. Hermes keeps the first string any `transform_tool_result` hook returns, so when another
   plugin's hook answers first the card does not reach the model although the row says attached.
@@ -42,11 +42,11 @@ logger = logging.getLogger(__name__)
 
 KEY = "unblockbruecke_card"
 LRU_SIZE = 512
-EXTRA = 2  # the window holds threshold + EXTRA calls: 3 of the last 5 by default (D16)
+EXTRA = 2  # the window holds threshold + EXTRA calls: 3 of the last 5 by default
 NOTE = "{n} of your last {w} calls failed; this call still failed. A nudge, not an order."
 
-# The kind of failure, read from the error text, and the tags of `auto` cards that suit it (M0 P5
-# measured one row: an unreachable upstream and the `reframe` cards; a deck's glossary defines its tags).
+# The kind of failure, read from the error text, and the tags of `auto` cards that suit it (one row so
+# far: an unreachable upstream and the `reframe` cards; a deck's glossary defines its tags).
 KINDS: list[tuple[str, re.Pattern, tuple]] = [
     ("unreachable", re.compile(r"(?i)time[sd]?[ -]?out|timed out|unreachable|connection (?:refused|reset|aborted)|"
                                r"econnrefused|etimedout|could not resolve|name resolution|temporar(?:y|ily) "
@@ -126,7 +126,7 @@ def note(count: int, threshold: int) -> str:
 
 
 def attach(result: Any, card: dict, count: int, draw_id: str = "", threshold: int = 3) -> Optional[str]:
-    """The result with the card added, or None when its shape takes no card (constraint 1). About 300
+    """The result with the card added, or None when its shape takes no card. About 300
     characters: the agent face, one sentence, the `draw_id` to rate it when the user says it helped."""
     if not isinstance(result, str):
         return None
@@ -186,7 +186,7 @@ class AutoDraw:
         settings = self.read_settings()
         if not settings.get("autodraw"):
             return None
-        key = turn_id  # per turn only (D17 not supported by M0 P1)
+        key = turn_id  # the count is per turn
         threshold = settings["autodraw_threshold"]
         failed = bridge.failed(tool, result, status)
         fire, count, outcomes = self.tracker.step(key, failed, threshold)

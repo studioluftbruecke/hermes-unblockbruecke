@@ -1,4 +1,4 @@
-"""The Desktop half's behaviour after the v0.1 review (lane UI): each test drives desktop/src in node.
+"""The Desktop half's behaviour: each test drives desktop/src in node.
 
 desktop/src is bundled with the build's own esbuild (desktop/build/node_modules, after `npm ci`) against
 three small stand-ins written below: `@hermes/plugin-sdk` (atoms, a host with focused-chat atoms, a
@@ -263,10 +263,10 @@ def run_js(tmp_path: Path, body: str, name: str = "case") -> dict:
     return json.loads(run.stdout.strip().splitlines()[-1])
 
 
-# ---- UI-12: a server error reads as a sentence ------------------------------------------------------
+# ---- a server error reads as a sentence ------------------------------------------------------
 
 def test_server_errors_read_as_a_sentence_not_the_raw_answer(tmp_path):
-    """UI-12: "Internal Server Error" and FastAPI's detail JSON never reach the user; contract messages do."""
+    """"Internal Server Error" and FastAPI's detail JSON never reach the user; contract messages do."""
     out = run_js(tmp_path, """
         import { restError, setCtx } from '@src/core.js'
         import { drawCard } from '@src/state.js'
@@ -305,7 +305,7 @@ def test_server_errors_read_as_a_sentence_not_the_raw_answer(tmp_path):
     assert "The list did not load: " in out["journal"] and "Internal Server Error" not in out["journal"]
 
 
-# ---- UI-20, UI-23, UI-24: copy ----------------------------------------------------------------------
+# ---- copy ----------------------------------------------------------------------
 
 LONGEST = r"""
 export function leaves(t, out = []) {
@@ -318,7 +318,7 @@ export function leaves(t, out = []) {
 
 
 def test_no_visible_string_over_160_characters_and_deck_names_not_slugs(tmp_path):
-    """UI-20, UI-23: the decks note, the settings page and the connection notes stay under 160
+    """The decks note, the settings page and the connection notes stay under 160
     characters per string, and they name decks by their name ("Agent unblock"), never the slug."""
     out = run_js(tmp_path, """
         import { NOT_ON_TEXT, OFFLINE_TEXT, SCHEMA_TEXT } from '@src/core.js'
@@ -350,7 +350,7 @@ def test_card_of_the_day_is_on_the_chip_and_in_its_popover_and_the_own_license_b
     """0.2 (sketch A): the chip carries the card of the day, its icon and the card's line; its popover
     holds that card, "Pass it to Hermes", "Another" and the page link. With card_of_day off the chip says
     Draw and the popover offers the card back and Draw.
-    UI-24: an own deck's header shows "yours" once, not the license id "own" beside it."""
+    An own deck's header shows "yours" once, not the license id "own" beside it."""
     out = run_js(tmp_path, """
         import { Chip } from '@src/chip.js'
         import { DecksView } from '@src/decks.js'
@@ -387,12 +387,12 @@ def test_card_of_the_day_is_on_the_chip_and_in_its_popover_and_the_own_license_b
     assert "CC0-1.0" in out["night"] and "imported" in out["night"]
 
 
-# ---- UI-18, P3: a dot for the card Hermes drew in this chat --------------------------------------------
+# ---- a dot for the card Hermes drew in this chat --------------------------------------------
 
 def test_hermes_drew_dot_clears_on_open_on_the_next_turn_and_when_another_chat_gets_focus(tmp_path):
     """0.2: a draw by Hermes in the focused chat puts a dot on the chip and the card's line on it; opening
     the popover shows that card with Helped and Not this time and clears the dot; the next turn and a
-    focus change clear it too. With "Hermes draws when stuck" off the chip asks nothing (HX-15)."""
+    focus change clear it too. With "Hermes draws when stuck" off the chip asks nothing."""
     out = run_js(tmp_path, """
         import { Chip } from '@src/chip.js'
         import { jsx } from 'react/jsx-runtime'
@@ -451,10 +451,10 @@ def test_hermes_drew_dot_clears_on_open_on_the_next_turn_and_when_another_chat_g
 CARD_HUMAN = "Read the error as a stranger."
 
 
-# ---- UI-22: the shortcut draws from the deck this profile last used ------------------------------------
+# ---- the shortcut draws from the deck this profile last used ------------------------------------
 
 def test_shortcut_draws_from_the_pressed_chip_of_this_profile(tmp_path):
-    """0.2 (his chip rules): the Draw tab, the chip's Another and mod+alt+u share the pressed chip, one
+    """The chip rules: the Draw tab, the chip's Another and mod+alt+u share the pressed chip, one
     key per profile (`pressed:<profile>`). A chip pressed on the page is the shortcut's deck in that
     profile and not in another; a profile with no choice starts on Human, else All (no deck sent); a deck
     switched off or gone falls back the same way without a toast. Deleting the pressed deck clears it."""
@@ -508,7 +508,7 @@ def test_shortcut_draws_from_the_pressed_chip_of_this_profile(tmp_path):
         res.afterDelete = ctx.storage.get('pressed:coding', null)
         console.log(JSON.stringify(res))
     """)
-    # Fixed order: the shipped decks in his order (Agent last of them), then the others by name, then All.
+    # Fixed order: the shipped decks in their fixed order (Agent last of them), then the others by name, then All.
     order = [["Coding", False], ["Writing", False], ["Agent unblock", False], ["Mine", False], ["Night shift", False], ["All", True]]
     assert out["first"] == [c for c in order if c[0] != "Writing"], out["first"]
     assert out["pagePick"]["coding"] == "mine" and out["pagePick"]["draws"] == 0, out
@@ -539,8 +539,8 @@ const posts = () => rests.filter(([m]) => m !== 'GET').map(([m, p, b]) => [m, p,
 
 
 def test_new_deck_refuses_a_taken_name_and_saves_at_once(tmp_path):
-    """UI-04: New deck never edits or copies an existing deck: a name already taken, or the name of a
-    deck that comes with the plugin, is refused with a plain message. M4 (D21): no file name field, and
+    """New deck never edits or copies an existing deck: a name already taken, or the name of a
+    deck that comes with the plugin, is refused with a plain message. No file name field, and
     the new deck saves at once with one PUT and no preview; the Undo bar follows."""
     out = run_js(tmp_path, EDITOR + """
         setAnswer((m, p) => (m === 'PUT' ? { ok: true, schema: 1, deck: 'fresh-deck', version: 1, summary: '1 card added', undo: { delete: 'fresh-deck' } } : { ok: true, schema: 1 }))
@@ -575,8 +575,8 @@ def test_new_deck_refuses_a_taken_name_and_saves_at_once(tmp_path):
 
 
 def test_replace_mine_asks_first_and_offers_undo(tmp_path):
-    """UI-21: "Replace mine" opens a confirm before anything is written; after the replace the Undo bar
-    restores the user's own version (lane AGENT answers `undo` like a save does)."""
+    """"Replace mine" opens a confirm before anything is written; after the replace the Undo bar
+    restores the user's own version (the backend answers `undo` like a save does)."""
     out = run_js(tmp_path, EDITOR + """
         let replaced = false
         setAnswer((m, p, b) => {
@@ -605,9 +605,29 @@ def test_replace_mine_asks_first_and_offers_undo(tmp_path):
     assert out["sent"] == [["/decks/import", False, None], ["/decks/import", True, None], ["/decks/mine/restore", False, 2]], out["sent"]
 
 
+def test_a_deck_that_loaded_with_a_warning_says_so_under_the_deck_list(tmp_path):
+    """A deck file with a key this version does not know still loads; the page names the key under the
+    list, apart from the decks that did not load."""
+    out = run_js(tmp_path, """
+        import { DecksView } from '@src/decks.js'
+        import { jsx } from 'react/jsx-runtime'
+        import { mount, text, all, queryClient } from './helpers.js'
+        import { DECKS, MINE, K } from './data.js'
+        queryClient.setQueryData(K('deck', 'agent-unblock'), { ok: true, schema: 1, deck: { ...MINE.deck, deck: 'agent-unblock', name: 'Agent unblock', source: 'shipped' } })
+        const warned = { ...DECKS, broken: { gone: 'the file is not valid YAML' },
+          decks: DECKS.decks.map(d => (d.deck === 'mine' ? { ...d, warning: 'keys this version does not know: notes' } : d)) }
+        const banners = tree => all(tree, n => /banner/.test(n.props.className || '')).map(text)
+        console.log(JSON.stringify({ warned: banners(mount(jsx(DecksView, { decksData: warned })).tree),
+                                     plain: banners(mount(jsx(DecksView, { decksData: DECKS })).tree) }))
+    """)
+    assert any("mine" in b and "notes" in b and "Not loaded" not in b for b in out["warned"]), out["warned"]
+    assert any("Not loaded" in b and "gone" in b and "notes" not in b for b in out["warned"]), out["warned"]
+    assert out["plain"] == [], out["plain"]
+
+
 def test_problem_lists_show_at_most_fifty_and_say_how_many_more(tmp_path):
-    """UI-06: a refusal with thousands of problems renders the capped list plus "and N more", both for
-    the capped answer lane CORE sends (problems_more) and for an older uncapped one."""
+    """A refusal with thousands of problems renders the capped list plus "and N more", both for
+    the capped answer the backend sends (problems_more) and for an older uncapped one."""
     out = run_js(tmp_path, EDITOR + """
         const probs = n => Array.from({ length: n }, (_, i) => ({ card: `bg-${i}`, rule: 'tags', message: 'unknown tag nope' }))
         let mode = 'capped'
@@ -633,7 +653,7 @@ def test_problem_lists_show_at_most_fifty_and_say_how_many_more(tmp_path):
 
 
 def test_escape_cancels_the_card_editor_the_preview_and_new_deck(tmp_path):
-    """UI-13: Escape works as Cancel in the card editor, the preview panel and the New deck form."""
+    """Escape works as Cancel in the card editor, the preview panel and the New deck form."""
     out = run_js(tmp_path, EDITOR + """
         // A backend that still wants a preview (0.1) refuses the save at once; the preview panel opens.
         setAnswer(m => (m === 'PUT' ? { __status: 409, body: { ok: false, schema: 1, error: 'stale_preview', message: 'Preview first.' } }
@@ -658,7 +678,7 @@ def test_escape_cancels_the_card_editor_the_preview_and_new_deck(tmp_path):
 
 
 def test_card_length_counts_characters_as_the_backend_does(tmp_path):
-    """UI-14: 46 emoji are 46 characters (Python's len()), not 92 UTF-16 units: Preview stays enabled."""
+    """46 emoji are 46 characters (Python's len()), not 92 UTF-16 units: Preview stays enabled."""
     out = run_js(tmp_path, EDITOR + """
         one(all(view.tree, n => n.type === 'button' && n.props.className === 'nm' && text(n) === 'Mine'), 'Mine').props.onClick()
         view.render()
@@ -677,10 +697,10 @@ def test_card_length_counts_characters_as_the_backend_does(tmp_path):
     assert out["over"]["label"] == "Human face (91/90)" and out["over"]["disabled"] is True
 
 
-# ---- UI-11, UI-10: the card's text -------------------------------------------------------------------
+# ---- the card's text -------------------------------------------------------------------
 
 def test_card_lines_and_table_text_take_their_direction_from_the_text(tmp_path):
-    """UI-11: card lines, the editor's table cells and the Draw tab's earlier lines carry dir="auto", so an
+    """Card lines, the editor's table cells and the Draw tab's earlier lines carry dir="auto", so an
     Arabic or Hebrew line reads right to left."""
     out = run_js(tmp_path, EDITOR + """
         import { Card } from '@src/ui.js'
@@ -705,9 +725,9 @@ CHROME = os.environ.get("UBK_CHROME", "")
 
 @pytest.mark.skipif(not (PLAYWRIGHT and CHROME), reason="set UBK_PLAYWRIGHT (the playwright module folder) and UBK_CHROME to run the browser check")
 def test_cards_fit_text_at_the_contract_limits_in_a_browser(tmp_path):
-    """UI-10: the 200 px card (popover, transcript) and the 300 px table card fit a 90-character human
+    """The 200 px card (popover, transcript) and the 300 px table card fit a 90-character human
     line, a 220-character instruction, four 20-character tags and a 40-character deck name: no face
-    content runs past its box, and the bottom row stays inside the inner frame line. UI-11 in a real
+    content runs past its box, and the bottom row stays inside the inner frame line. The text direction in a real
     layout engine: an Arabic line computes to direction rtl."""
     out = run_js(tmp_path, f"""
         import {{ Card }} from '@src/ui.js'

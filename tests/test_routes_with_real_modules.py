@@ -1,5 +1,5 @@
-"""Seams between the review-fix lanes: CORE caps problem lists, AGENT returns undo on a replace import,
-UI's routes pass both through. Each lane stubbed the other side; these run the real modules together."""
+"""The routes with the real modules behind them: the problem list is capped, a replacing import answers an
+undo, and the routes pass both through unchanged."""
 import pytest
 
 from ub_fakes import FakeCtx, card, deck_doc, load_plugin, make_store, sub, yaml_text

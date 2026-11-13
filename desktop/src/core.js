@@ -1,6 +1,6 @@
 // Unblockbrücke, Desktop half: the backend door, connection state and small shared helpers.
 // Every call goes to this plugin's own routes (`ctx.rest`, `/api/plugins/unblockbruecke/...`) through
-// api.js; nothing here reaches any other host (PLAN constraint 11: the Desktop is a renderer).
+// api.js; nothing here reaches any other host: the Desktop half only renders what the routes answer.
 import { atom, host } from '@hermes/plugin-sdk'
 
 export const ID = 'unblockbruecke'
@@ -101,7 +101,7 @@ export async function rest(path, opts) {
   return out
 }
 
-/** A client op id for writes: a repeat answers {duplicate: true} and changes nothing (contract §5). */
+/** A client op id for writes: a repeat answers {duplicate: true} and changes nothing. */
 export function opId() {
   const c = globalThis.crypto
   if (c && typeof c.randomUUID === 'function') return c.randomUUID()
@@ -162,7 +162,7 @@ export const SLUG_RE = /^[a-z0-9-]{2,40}$/
 export const CARD_ID_RE = /^[a-z]{2,4}-\d{2}$/
 export const TAG_RE = /^[a-z][a-z0-9-]{1,20}$/
 
-// The two built-in tags (contract §1); GET /decks/{slug} glossaries carry only the deck's own tags.
+// The two built-in tags; GET /decks/{slug} glossaries carry only the deck's own tags.
 export const BUILTIN_TAGS = {
   human: 'Asks a person something; Hermes never draws it on its own when nobody is at the keyboard.',
   auto: 'Written for Hermes, for the moment right after several failed tool calls.',

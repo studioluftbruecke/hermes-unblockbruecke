@@ -1,9 +1,9 @@
-// The chip in the status bar and its popover (0.2 sketch A). The chip carries the card of the day:
+// The chip in the status bar and its popover. The chip carries the card of the day:
 // its icon and the card's line. When Hermes drew a card in the chat in focus, the chip shows that
 // card's line with a dot until it is clicked, the next turn starts, or another chat gets focus. The
 // popover holds the card, "Pass it to Hermes", "Another" and a link to the page; after Hermes drew,
 // the card with "Helped" and "Not this time". The chip asks the journal about Hermes' draws only
-// while "Hermes draws when stuck" is on (HX-15).
+// while "Hermes draws when stuck" is on.
 import { atom, host, Popover, PopoverContent, PopoverTrigger, useValue } from '@hermes/plugin-sdk'
 import { Component, useEffect, useRef, useState } from 'react'
 import { jsx } from 'react/jsx-runtime'
@@ -17,7 +17,7 @@ import { Btn, Card, CardBack, CardIcon, h } from './ui.js'
 const NULL_ATOM = atom(null)
 const FALSE_ATOM = atom(false)
 
-/** Q3: the focused chat's ids. The journal's session_id carries the stored id; the runtime id is asked
+/** The focused chat's ids. The journal's session_id carries the stored id; the runtime id is asked
  *  too, and the newest draw by Hermes in either wins. */
 function useFocusedIds() {
   const st = host.state || {}

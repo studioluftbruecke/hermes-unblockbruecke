@@ -1,13 +1,13 @@
-"""Show and hide: the Draw button follows show_in_statusbar on every GET /settings read (PLAN-v0.1.3 M3);
+"""Show and hide: the Draw button follows show_in_statusbar on every GET /settings read;
 the sidebar row comes from the shared module and its retired key show_in_sidebar seeds it once
-(experiments/sidebar-rows/PLAN.md, D4 and V5). Driven in node through the stand-ins in
-test_ui_review.py.
+(the same module in every Studio Luftbrücke plugin). Driven in node through the stand-ins in
+test_page.py.
 
-Skipped without node and desktop/build/node_modules, like test_ui_review.py.
+Skipped without node and desktop/build/node_modules, like test_page.py.
 """
 import pytest
 
-from test_ui_review import MODULES, NODE, run_js
+from test_page import MODULES, NODE, run_js
 
 pytestmark = pytest.mark.skipif(not NODE or not (MODULES / "esbuild").is_dir(),
                                 reason="node and desktop/build/node_modules (npm ci) are needed to run desktop/src")
@@ -91,7 +91,7 @@ def test_the_button_follows_the_stored_answer_before_any_read_and_each_read_afte
 
 def test_the_row_is_the_brand_at_53_from_the_first_frame(tmp_path):
     """The shared module registers the row in register(), before any backend answer: the brand as the
-    label, the page path, the copy codicon, position 53 (D3). A stored position and a stored hidden
+    label, the page path, the copy codicon, position 53. A stored position and a stored hidden
     row hold."""
     out = run_js(tmp_path, CASE + """
         const res = {}
@@ -135,7 +135,7 @@ def test_seed_skipped_when_a_choice_is_stored(tmp_path):
 
 
 def test_no_stored_choice_and_the_backend_says_false_hides_and_stores(tmp_path):
-    """V5: the row shows at start (the key's default), the first answer false hides it and stores
+    """The row shows at start (the key's default), the first answer false hides it and stores
     {show: false, position: 53}; a later read saying true changes nothing; a restart with that
     storage starts hidden and seeds nothing."""
     out = run_js(tmp_path, CASE + """

@@ -5,13 +5,14 @@
 //   - the 16 MB plugin.js cap (apps/desktop/electron/main.ts PLUGIN_SOURCE_MAX_BYTES);
 //   - module evaluation CPU (budget 100 ms), with stand-ins for the SDK and React, string code
 //     generation disabled as in the renderer.
-// Hermes' admission lint and install scan are Python: hermes_checks.py, run by tests/test_desktop_build.py.
+// Hermes' admission lint and install scan are Python: tests/hermes_checks.py, run by tests/test_desktop_build.py.
 // Pattern: plugins/eselsbruecke/desktop/build/build.mjs.
 //
-// Usage (from plugins/unblockbruecke/desktop/build, after `npm ci`):
-//   node build.mjs                 build and check; prints one JSON line
-//   node build.mjs --check-only    check the committed plugin.js without rebuilding
-//   node build.mjs --out DIR       build into DIR/plugin.js and check it (the test compares SHA-256)
+// Usage (from plugins/unblockbruecke/desktop/build, after `npm ci`; HERMES_SOURCE is Hermes' source tree,
+// the folder with apps/desktop/, for the runtime loader's import scan):
+//   HERMES_SOURCE=... node build.mjs                 build and check; prints one JSON line
+//   HERMES_SOURCE=... node build.mjs --check-only    check the committed plugin.js without rebuilding
+//   HERMES_SOURCE=... node build.mjs --out DIR       build into DIR/plugin.js and check it (the test compares SHA-256)
 import crypto from 'crypto'
 import fs from 'fs'
 import { createRequire } from 'module'
@@ -62,8 +63,11 @@ async function build() {
 
 async function loaderScan(src) {
   const esbuild = require('esbuild')
-  const LOADER = '/opt/hermes/apps/desktop/src/contrib/runtime-loader.ts'
-  if (!fs.existsSync(LOADER)) return { skipped: `${LOADER} not found` }
+  // The loader comes from Hermes' source tree (HERMES_SOURCE); a missing variable or file fails the check.
+  const source = process.env.HERMES_SOURCE
+  if (!source) return { ok: false, error: 'HERMES_SOURCE is not set: point it at Hermes\' source tree (the folder with apps/desktop/) so the runtime loader\'s import scan can run' }
+  const LOADER = path.join(source, 'apps', 'desktop', 'src', 'contrib', 'runtime-loader.ts')
+  if (!fs.existsSync(LOADER)) return { ok: false, error: `${LOADER} not found: HERMES_SOURCE must be Hermes' source tree with the Desktop app (apps/desktop/)` }
   const loader = fs.readFileSync(LOADER, 'utf8')
   const start = loader.indexOf('const importSpecifierRe')
   const end = loader.indexOf('export function unloadRuntimePlugin')
@@ -105,6 +109,6 @@ const report = {
   evaluation: { cpuMsRuns: cpu, cpuMsMin: cpu[0], cpuMsMedian: cpu[2], budgetMs: EVAL_BUDGET_MS, withinBudget: cpu[0] <= EVAL_BUDGET_MS,
     loadAverage: (await import('os')).loadavg().map(x => +x.toFixed(2)), registered: runs.every(r => r.registered), contributions: runs[0].contributions },
 }
-report.ok = report.plugin_js.underCap && (scan.ok || !!scan.skipped) && report.evaluation.registered && report.evaluation.withinBudget
+report.ok = report.plugin_js.underCap && !!scan.ok && report.evaluation.registered && report.evaluation.withinBudget
 console.log(JSON.stringify(report))
 process.exit(report.ok ? 0 : 1)

@@ -1,8 +1,8 @@
-"""Drawing a card (F3, F4, F5, F6, F8, F11).
+"""Drawing a card.
 
 `draw()` picks one card from a set of decks: context filters first, then the last three draws of
 each deck are left out (when the deck has more cards than that), then a weighted pick where a
-card's weight comes from the journal (F11; `learning` off means all weights 1). The random source
+card's weight comes from the journal (`learning` off means all weights 1). The random source
 is injectable so tests are seeded.
 """
 from __future__ import annotations
@@ -39,9 +39,9 @@ def candidates(decks: list[dict], context: str = "any", tags: Optional[list] = N
             if wanted and not (wanted & ctags):
                 continue
             if unattended and "human" in ctags:
-                continue  # constraint 6: no card that asks a person when nobody is there
+                continue  # no card that asks a person when nobody is there
             out.append((deck, card))
-    if context == "auto":  # 0.2 (AX-6): only cards written for Hermes, never a person's card as a fallback
+    if context == "auto":  # only cards written for Hermes, never a person's card as a fallback
         out = [(d, c) for d, c in out if "auto" in (c.get("tags") or [])]
     return out
 
@@ -57,10 +57,10 @@ def draw(decks: list[dict], context: str = "any", tags: Optional[list] = None, u
 
     `recent` maps a deck slug to its recently drawn card ids, newest first; `weights` maps
     "deck/id" to a positive weight. `prefer` names tags that fit the moment (auto-draw: the kind of
-    failure, M0 P5): when a card carries one, the pick is among those, before the repeat rule. A
+    failure): when a card carries one, the pick is among those, before the repeat rule. A
     matched pool is small (three `reframe` cards in the Agent deck), so there the repeat rule leaves
-    out at most all but one of them: the match wins over variety (the 0.2 live box found three quick
-    matched draws in a row pushing the fourth off the match)."""
+    out at most all but one of them: the match wins over variety (otherwise three quick matched draws in a
+    row push the fourth off the match)."""
     if context not in CONTEXTS:
         raise ValueError(f"context must be one of {', '.join(CONTEXTS)}")
     pool = candidates(decks, context, tags, unattended)

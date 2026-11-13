@@ -1,4 +1,4 @@
-"""D18 (b), M0 P3: the reply of a turn where Hermes drew a card names that card in one line, added by
+"""The reply of a turn where Hermes drew a card names that card in one line, added by
 `transform_llm_output` without the model: a card directive on Desktop, a plain line elsewhere, nothing
 on every other turn, once per turn, fail-open."""
 import json
@@ -8,14 +8,6 @@ import pytest
 from ub_fakes import FakeCtx, load_plugin, sub
 
 FAIL = json.dumps({"output": "boom", "exit_code": 1, "error": None})
-
-
-@pytest.fixture(autouse=True)
-def detector():
-    bridge = sub("bridge")
-    bridge.set_detector(lambda tool, result: (result == FAIL, ""))
-    yield
-    bridge.set_detector(None)
 
 
 def ctx_for(tmp_path, autodraw=True):
@@ -81,3 +73,18 @@ def test_manifest_lists_both_hooks():
 
     manifest = YAML(typ="safe", pure=True).load((ROOT / "plugin.yaml").read_text(encoding="utf-8"))
     assert manifest["provides_hooks"] == ["transform_tool_result", "transform_llm_output"]
+
+
+@pytest.mark.parametrize("unattended", ["cron", "webhook", "single query"])
+def test_a_turn_nobody_reads_gets_no_reply_line(tmp_path, monkeypatch, unattended):
+    """Hermes keeps only the first reply rewrite of a turn, so the line is added only where a person reads
+    the reply; in a scheduled job, a webhook or a single-query run another plugin's rewrite keeps the turn."""
+    ctx = ctx_for(tmp_path)
+    if unattended == "cron":
+        ctx.current_cron_execution = lambda: {"job_id": "j1"}
+    elif unattended == "webhook":
+        ctx.surface = "webhook"
+    else:
+        monkeypatch.setenv("HERMES_SINGLE_QUERY_SESSION", "1")
+    fail_turn(ctx, "t1")
+    assert ctx.hooks["transform_llm_output"](response_text="Report.", platform="cron", turn_id="t1") is None

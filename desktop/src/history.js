@@ -48,7 +48,7 @@ export function ResetLearning({ learning }) {
       } }))
 }
 
-// Where the turn of one of Hermes' draws ran (v0.2-contract.md §4): the row's `where_label`, else its
+// Where the turn of one of Hermes' draws ran: the row's `where_label`, else its
 // `where` in the same words; a row written by 0.1 says nothing.
 const WHERE = {
   desktop: 'Desktop chat', kanban: 'Kanban task', cron: 'Cron job', cli: 'CLI', subagent: 'Delegated task', api: 'API',
@@ -60,7 +60,7 @@ export function whereText(d) {
   return raw ? WHERE[raw] || raw : ''
 }
 
-/** What the next call did, as a fact (AX-4): "Next call ok", "Next call failed", or nothing yet. The
+/** What the next call did, as a fact: "Next call ok", "Next call failed", or nothing yet. The
  *  0.2 row's `next_call`, else 0.1's `next.status`. */
 export function nextFact(d) {
   const s = d && (d.next_call || (d.next && d.next.status))

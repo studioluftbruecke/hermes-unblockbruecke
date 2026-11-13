@@ -53,7 +53,7 @@ def test_stats_and_weights(tmp_path):
     st = journal.stats(store)
     assert st["d/d-01"] == {"drawn": 4, "helped": 1, "not_now": 1, "by_auto": 0, "recovered": 0}
     w = journal.weights(st)
-    # CORE-2: from ratings only; one helped and one not-now cancel out, unrated draws change nothing
+    # From ratings only; one helped and one not-now cancel out, unrated draws change nothing
     assert w["d/d-01"] == pytest.approx(1.0) and w["d/d-02"] == pytest.approx(1.0)
     many = {"x/x-01": {"drawn": 100, "helped": 0, "not_now": 100}}
     assert journal.weights(many)["x/x-01"] == journal.FLOOR  # no card disappears
@@ -95,7 +95,7 @@ def test_concurrent_appends_keep_every_line(tmp_path):
     assert len(lines) == 200 and bad == 0
 
 
-# --- round 2: the journal cache's edges (second pass) ----------------------------------------------
+# --- the journal cache's edges ---------------------------------------------------------------------
 
 def _warm_and_fresh(journal, store):
     """(what this process's cache answers, what a fresh process reads) for stats, weights and draws."""
@@ -113,7 +113,7 @@ def _draws(journal, store, n, start=1):
 
 
 def test_journal_cache_sees_a_same_size_edit_that_restores_the_mtime(tmp_path):
-    """Journal cache edges (P2-CORE-J2): an in-place edit that keeps the size and puts the old mtime back."""
+    """Journal cache edges: an in-place edit that keeps the size and puts the old mtime back."""
     import os
     import time
 
@@ -135,7 +135,7 @@ def test_journal_cache_sees_a_same_size_edit_that_restores_the_mtime(tmp_path):
 
 
 def test_journal_cache_sees_an_edit_that_grows_the_file(tmp_path):
-    """Journal cache edges (P2-CORE-J3): an in-place edit one byte longer is not taken for an append."""
+    """Journal cache edges: an in-place edit one byte longer is not taken for an append."""
     journal = sub("journal")
     store = make_store(tmp_path)
     ids = _draws(journal, store, 8)
@@ -156,7 +156,7 @@ def test_journal_cache_sees_an_edit_that_grows_the_file(tmp_path):
 
 
 def test_journal_a_future_dated_row_does_not_take_later_draws_off_the_append_path(tmp_path, monkeypatch):
-    """Journal cache edges (P2-CORE-D3): one row dated a day ahead (a clock that ran ahead once) does not make
+    """Journal cache edges: one row dated a day ahead (a clock that ran ahead once) does not make
     every later read rebuild the whole journal; the cached answer still equals a fresh read."""
     journal = sub("journal")
     store = make_store(tmp_path)
@@ -182,7 +182,7 @@ def test_journal_a_future_dated_row_does_not_take_later_draws_off_the_append_pat
 
 
 def test_journal_cache_frees_replaced_snapshots_and_bounds_other_data_folders(tmp_path, monkeypatch):
-    """Journal cache edges (P2-CORE-M1): a replaced snapshot is freed at once (no reference cycle waits for the
+    """Journal cache edges: a replaced snapshot is freed at once (no reference cycle waits for the
     collector), and the rows kept for other data folders stay under the row budget."""
     import gc
     import weakref

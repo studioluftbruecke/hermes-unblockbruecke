@@ -1,5 +1,5 @@
-"""Parent fix after round 2: a save to `<shipped>-own` that does not exist yet starts from the shipped
-deck (an own copy), never an unrelated new deck that then hides the shipped one (P2-UI-01, route half)."""
+"""A save to `<shipped>-own` that does not exist yet starts from the shipped deck (an own copy), never an
+unrelated new deck that then hides the shipped one."""
 from ub_fakes import card, deck_doc, make_store, sub
 
 

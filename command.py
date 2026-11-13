@@ -1,4 +1,4 @@
-"""`/card [deck|agent]` in every chat surface (F4).
+"""`/card [deck|agent]` in every chat surface.
 
 `/card` draws a human card from the decks switched on, `/card coding` from one deck, `/card agent`
 from the Agent deck with both faces. Plain text only, so it reads the same on every surface; the

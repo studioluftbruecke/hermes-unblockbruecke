@@ -1,8 +1,8 @@
-"""The journal (F10, F11): every draw, what happened next, and ratings.
+"""The journal: every draw, what happened next, and ratings.
 
 One append-only JSON Lines file per month, `journal/<YYYY-MM>.jsonl` (month in Hermes' zone),
 written under the data folder's lock (the gateway, a `chat -q` process and the plugin host child
-all write). Line shapes: contract §4. A rating or an outcome is a later line with the same
+all write). A rating or an outcome is a later line with the same
 `draw_id`; nothing is ever rewritten. Lines are flushed, not fsynced: a power cut can lose the
 newest lines of a journal, never the decks.
 
@@ -69,7 +69,7 @@ def append(store: Store, row: dict) -> dict:
 def record_draw(store: Store, *, by: str, deck: str, card: str, face: str, context: str,
                 session_id: str = "", turn_id: str = "", tool: str = "", streak: Optional[int] = None,
                 attached: Optional[bool] = None, where: str = "", platform: str = "") -> dict:
-    """One draw line. `where` (0.2, AX-2): where Hermes' turn ran, on draws by `agent` and `auto`
+    """One draw line. `where`: where Hermes' turn ran, on draws by `agent` and `auto`
     (`bridge.where`); `platform` names the messaging platform when `where` is `messaging`."""
     if by not in BY:
         raise ValueError(f"by must be one of {', '.join(BY)}")
@@ -94,7 +94,7 @@ def where_label(where: str, platform: str = "") -> str:
 
 
 def facts(item: dict) -> dict:
-    """0.2 (AX-4): the outcome as facts. `next_call` is the next call's status in the same turn as Hermes
+    """The outcome as facts. `next_call` is the next call's status in the same turn as Hermes
     counted it ("ok" or "failed"), absent when the turn made no further call; never "recovered"."""
     out: dict = {}
     nxt = item.get("next")
@@ -113,7 +113,7 @@ def record_outcome(store: Store, draw_id: str, next_: dict) -> dict:
 
 
 def fits(row: dict) -> bool:
-    """A row the read side can use: the fields it reads have the types it expects (contract §4). Other
+    """A row the read side can use: the fields it reads have the types it expects. Other
     rows (a newer line shape, a hand edit) are skipped, so they never break a draw or the journal view."""
     kind = row.get("kind")
     if not isinstance(kind, str):
@@ -364,7 +364,7 @@ def rows(store: Store, months: int = MONTHS_READ) -> list[dict]:
     its own line order. Parsed rows are cached per file (inode, size, mtime, ctime) and per snapshot,
     so a draw reads only the lines written since the last one. The list is shared: read it, never
     change it."""
-    names = [n for n in store.listdir(FOLDER) if MONTH_RE.match(n)][-months:]
+    names = [n for n in store.listdir(FOLDER) if MONTH_RE.fullmatch(n)][-months:]
     with _CACHE_LOCK:
         folder = store.path(FOLDER)
         files = [_read_file(store, folder, n) for n in names]
@@ -543,7 +543,7 @@ def recent_by_deck(store: Store, per_deck: int = 3) -> dict[str, list]:
     return recent_from(rows(store, months=2), per_deck)
 
 
-# --- learning reset (F11): a marker line; stats count only lines after the newest reset ----------
+# --- learning reset: a marker line; stats count only lines after the newest reset ----------
 
 def reset_learning(store: Store, by: str = "user") -> dict:
     return append(store, {"kind": "reset", "at": bridge.iso(), "by": by})

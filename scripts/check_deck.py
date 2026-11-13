@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check a deck file before you propose it (F14): the plugin loader's rules.
+"""Check a deck file before you propose it: the plugin loader's rules.
 
     python3 scripts/check_deck.py my-deck.yaml [more.yaml ...]
 
@@ -42,7 +42,9 @@ def check_file(path: Path) -> list[dict]:
         doc = decks.parse_yaml(text)
     except decks.DeckError as exc:
         return [{"rule": exc.code, "card": None, "message": str(exc)}]
-    _deck, probs = decks.validate(doc, path.stem)
+    deck, probs = decks.validate(doc, path.stem, file=True)
+    if deck is not None and deck.get("unknown_keys"):  # the plugin loads such a file, a proposed one is fixed first
+        return [decks.unknown_keys_problem(deck["unknown_keys"])]
     return probs
 
 

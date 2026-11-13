@@ -1,9 +1,8 @@
-"""M1 'Names and copy' (PLAN-v0.2): the copy budgets, the one name, the short deck names and marks.
+"""Names and copy: the copy budgets, the one name, the short deck names and marks.
 
 Red on 0.1.0 (a 340-character manifest, setting texts up to 414 characters, a tool head without
 "stuck", a 751-word skill, the long deck names) and on 0.1.4 (`origin/main` when 0.2 started: a
 614-word skill, the long deck names and the suit marks, the old card-of-the-day and learning texts).
-Evidence: `experiments/unblockbruecke/v0.2/core/m1_copy_*.out`.
 """
 
 import re
@@ -15,7 +14,7 @@ from ub_fakes import ROOT, sub
 SKILL_WORDS_MAX = 400
 ONE_LINER = ("Cards to unblock yourself or your agent, drawn by you when you are stuck and by Hermes when its "
              "tool calls keep failing.")
-# PLAN-v0.2 § "Settings after the cut" (the autodraw pair came with M2's rule).
+# The settings' labels and descriptions, word for word.
 SETTING_TEXTS = {
     "autodraw": ("Hermes draws when stuck", "After 3 failed tool calls out of the last 5, Hermes gets one card with a next "
                                             "move. The call still counts as failed."),
@@ -24,7 +23,7 @@ SETTING_TEXTS = {
     "card_of_day": ("Card of the day", "One card for you each day in the status bar."),
     "learning": ("Decks learn", "Cards you mark as helped come up a little more often. None disappears."),
 }
-# His sketch pick: "Rename to just "Human", "Coding", etc." and a glyph per deck meaning.
+# Short deck names ("Human", "Coding", ...) and a glyph per deck that names its subject.
 DECKS = {"human-unblock": ("Human", "person"), "coding": ("Coding", "code"), "writing": ("Writing", "pencil"),
          "design": ("Design", "shapes"), "shaders": ("Shaders", "sphere"), "agent-unblock": ("Agent", "robot")}
 
@@ -96,8 +95,8 @@ def test_plugin_texts_use_the_new_names():
 
 
 def test_show_in_statusbar_keeps_its_texts():
-    """PLAN-v0.1.3 § Settings; the fifth key of R10 (the plan's table predates it)."""
+    """The fifth setting the page writes keeps its label and default."""
     schema = manifest()["config_schema"]
     assert schema["show_in_statusbar"]["label"] == "Show in status bar"
     assert schema["show_in_statusbar"]["default"] is True
-    assert "show_in_sidebar" not in schema, "retired in 0.1.4 (sidebar rows D4): the switch is on the plugin's own page"
+    assert "show_in_sidebar" not in schema, "retired in 0.1.4: the switch is on the plugin's own page"

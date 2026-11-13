@@ -1,5 +1,5 @@
-"""Review findings of lane CORE (decks, store, journal, draw, settings): each test names
-its finding id and asserts the behaviour the fix promises."""
+"""Edges of decks, store, journal, draw and settings: wrong types, huge or deep files, clocks and caches.
+A docstring that starts with "Fixed:" names the wrong behaviour the test guards against."""
 import importlib.util
 import pathlib
 
@@ -25,7 +25,7 @@ WRONG_TYPES = [
 
 @pytest.mark.parametrize("field,value", WRONG_TYPES)
 def test_core1_validate_refuses_wrong_typed_card_fields(field, value):
-    """CORE-1: a non-string face (or any wrong-typed field) is a problem line, never an exception."""
+    """A non-string face (or any wrong-typed field) is a problem line, never an exception."""
     doc = deck_doc(cards=[{**card(1), field: value}, card(2)])
     deck, probs = sub("decks").validate(doc)
     assert deck is None and probs
@@ -36,13 +36,13 @@ def test_core1_validate_refuses_wrong_typed_card_fields(field, value):
                                        ("faces", "human"), ("version", "1"), ("glossary", ["x"]),
                                        ("description", 3), ("deck", 9), ("cards", 7), ("cards", "abc")])
 def test_core1_validate_refuses_wrong_typed_deck_fields(key, value):
-    """CORE-1: wrong types at deck level are problem lines too."""
+    """Wrong types at deck level are problem lines too."""
     deck, probs = sub("decks").validate(deck_doc(**{key: value}))
     assert deck is None and probs
 
 
 def test_core1_catalog_survives_one_broken_user_file(tmp_path):
-    """CORE-1: one deck file with a non-string face is listed as broken; drawing from the rest works."""
+    """One deck file with a non-string face is listed as broken; drawing from the rest works."""
     decks, service = sub("decks"), sub("service")
     store = make_store(tmp_path)
     write_user_deck(store, deck_doc("good-deck"))
@@ -54,7 +54,7 @@ def test_core1_catalog_survives_one_broken_user_file(tmp_path):
 
 
 def test_core1b_load_dir_survives_a_broken_community_deck(tmp_path):
-    """CORE-1b: a community deck with `agent: 42` is one broken entry, not a plugin that fails to load."""
+    """A community deck with `agent: 42` is one broken entry, not a plugin that fails to load."""
     decks = sub("decks")
     folder = tmp_path / "community"
     folder.mkdir()
@@ -67,7 +67,7 @@ def test_core1b_load_dir_survives_a_broken_community_deck(tmp_path):
 
 @pytest.mark.parametrize("cards", [7, "abc", [{**card(1), "human": 42}], [{**card(1), "agent": ["x"]}]])
 def test_core1_check_deck_reports_instead_of_raising(tmp_path, capsys, cards):
-    """CORE-1: check_deck.py prints the problems and exits 1 for `cards: 7` or a non-string face."""
+    """Check_deck.py prints the problems and exits 1 for `cards: 7` or a non-string face."""
     mod = check_deck_module()
     p = tmp_path / "odd-deck.yaml"
     p.write_text(yaml_text(deck_doc("odd-deck", cards=cards)), encoding="utf-8")
@@ -76,7 +76,7 @@ def test_core1_check_deck_reports_instead_of_raising(tmp_path, capsys, cards):
 
 
 def test_ui06_problems_are_capped_with_a_count_of_the_rest():
-    """UI-06: at most 50 problems come back; `problems_more` says how many were left out."""
+    """At most 50 problems come back; `problems_more` says how many were left out."""
     decks = sub("decks")
     bad = [card(i, human="<b>x</b>", agent="Run `ls`") for i in range(1, 100)]  # 2 problems per card
     deck, probs = decks.validate(deck_doc(cards=bad))
@@ -95,7 +95,7 @@ def test_ui06_problems_are_capped_with_a_count_of_the_rest():
 @pytest.mark.parametrize("face", ["[" * 40000, "[a](" * 10000, "a" * 40000 + ".", "x " * 20000],
                          ids=["brackets", "half-links", "one-word", "spaces"])
 def test_core6_long_faces_are_refused_by_length_before_the_text_rules(face):
-    """CORE-6: a face far over the limit costs no regex time: the length problem comes back at once."""
+    """A face far over the limit costs no regex time: the length problem comes back at once."""
     import time
 
     decks = sub("decks")
@@ -106,7 +106,7 @@ def test_core6_long_faces_are_refused_by_length_before_the_text_rules(face):
 
 
 def test_core6_text_rules_still_run_within_the_limit():
-    """CORE-6: under the limit every rule still runs (a link at the limit is still caught)."""
+    """Under the limit every rule still runs (a link at the limit is still caught)."""
     decks = sub("decks")
     for face in ("Read [the docs](somewhere) first. " + "x" * 150, "See [x](a(b)c) and [[y](z) now."):
         assert {p["rule"] for p in decks.text_problems(face, "agent", decks.AGENT_MAX, "tt-01")} == {"markdown_link"}
@@ -116,7 +116,7 @@ def test_core6_text_rules_still_run_within_the_limit():
                                   "cards:\n- " + "[x, " * 4000 + "]" * 4000 + "\n"],
                          ids=["brackets", "braces", "mixed"])
 def test_core7_deep_flow_nesting_is_refused_before_parsing(text):
-    """CORE-7: a small file nested far deeper than any deck answers bad_yaml at once."""
+    """A small file nested far deeper than any deck answers bad_yaml at once."""
     import time
 
     decks = sub("decks")
@@ -128,7 +128,7 @@ def test_core7_deep_flow_nesting_is_refused_before_parsing(text):
 
 
 def test_core7_brackets_in_card_text_do_not_count_as_nesting():
-    """CORE-7: '[' inside quoted or plain card text and flow-style tags still load."""
+    """'[' inside quoted or plain card text and flow-style tags still load."""
     decks = sub("decks")
     cards = [card(i, human=f"Open [ one more door {i}", agent=f"Close ] what you opened in step {i}.")
              for i in range(1, 41)]
@@ -142,7 +142,7 @@ def test_core7_brackets_in_card_text_do_not_count_as_nesting():
 
 
 def test_core16_a_new_shipped_deck_of_the_users_name_is_said_out_loud(tmp_path, monkeypatch):
-    """CORE-16, revised by P2-CORE-S1/S3: when an update ships a deck named like the user's own deck, the
+    """When an update ships a deck named like the user's own deck, the
     user's file is not dropped without a word: it is listed as broken with the hint to import it under
     another name, and the shipped deck keeps its name, switch and journal."""
     decks, service, editor = sub("decks"), sub("service"), sub("editor")
@@ -164,7 +164,7 @@ def test_core16_a_new_shipped_deck_of_the_users_name_is_said_out_loud(tmp_path, 
 
 @pytest.mark.parametrize("value", [float("inf"), float("-inf"), 10 ** 400, "1e999"], ids=["inf", "-inf", "huge", "str"])
 def test_core12_infinite_numbers_fall_to_the_default(value):
-    """CORE-12: `autodraw_threshold: .inf` (valid YAML) gives the default, never OverflowError."""
+    """`autodraw_threshold: .inf` (valid YAML) gives the default, never OverflowError."""
     settings = sub("settings")
     got = settings.read(lambda key, default: value if key == "autodraw_threshold" else default)
     assert 2 <= got["autodraw_threshold"] <= 6
@@ -172,7 +172,7 @@ def test_core12_infinite_numbers_fall_to_the_default(value):
 
 
 def test_core17_draw_cost_grows_linearly_with_the_pool():
-    """CORE-17: deck sizes are counted once per draw, so 990 cards cost about 10x of 99, not 100x."""
+    """Deck sizes are counted once per draw, so 990 cards cost about 10x of 99, not 100x."""
     import random
     import time
 
@@ -199,7 +199,7 @@ def test_core17_draw_cost_grows_linearly_with_the_pool():
 
 
 def test_core3_a_line_cut_inside_a_utf8_character_is_skipped(tmp_path):
-    """CORE-3: a power cut inside a multi-byte character costs that line, not every draw."""
+    """A power cut inside a multi-byte character costs that line, not every draw."""
     store, journal, service = make_store(tmp_path), sub("journal"), sub("service")
     journal.record_draw(store, by="user", deck="coding", card="co-01", face="human", context="any")
     path = store.path("journal", "2026-11.jsonl")
@@ -222,7 +222,7 @@ WRONG_SHAPES = [
 
 
 def test_core10_wrong_shaped_journal_rows_are_skipped(tmp_path):
-    """CORE-10: valid JSON of the wrong shape never breaks a draw, the journal view or the stats."""
+    """Valid JSON of the wrong shape never breaks a draw, the journal view or the stats."""
     store, journal, service = make_store(tmp_path), sub("journal"), sub("service")
     d = journal.record_draw(store, by="user", deck="coding", card="co-01", face="human", context="any")
     for row in WRONG_SHAPES:
@@ -243,7 +243,7 @@ def _at(bridge, year, month, day, hour, minute, zone):
 
 
 def test_core11_a_rating_in_an_earlier_named_month_file_still_counts(tmp_path):
-    """CORE-11: rows are ordered by their instant, so a zone change across a month boundary keeps a
+    """Rows are ordered by their instant, so a zone change across a month boundary keeps a
     rating after its draw (the draw lands in 2026-12.jsonl, the rating 10 minutes later in 2026-11.jsonl)."""
     store, journal, bridge = make_store(tmp_path), sub("journal"), sub("bridge")
     _at(bridge, 2026, 12, 1, 0, 30, "Europe/Berlin")  # 2026-11-30 23:30 UTC
@@ -256,7 +256,7 @@ def test_core11_a_rating_in_an_earlier_named_month_file_still_counts(tmp_path):
 
 
 def test_core11_reset_cuts_by_instant_not_by_file_name(tmp_path):
-    """CORE-11: a reset written after a rating (by the clock) clears it even when its file name sorts first."""
+    """A reset written after a rating (by the clock) clears it even when its file name sorts first."""
     store, journal, bridge = make_store(tmp_path), sub("journal"), sub("bridge")
     _at(bridge, 2026, 12, 1, 0, 30, "Europe/Berlin")
     d = journal.record_draw(store, by="user", deck="coding", card="co-01", face="human", context="any")
@@ -271,7 +271,7 @@ def test_core11_reset_cuts_by_instant_not_by_file_name(tmp_path):
 
 
 def test_core2_learning_raises_helped_cards_and_ignores_unrated_draws(tmp_path):
-    """CORE-2: weights come from explicit ratings only (contract §4). A card rated helped weighs more
+    """Weights come from explicit ratings only. A card rated helped weighs more
     than a never-rated one, unrated auto-draws leave a card at 1.0, not-now lowers it; floor and ceiling hold."""
     store, journal, service = make_store(tmp_path), sub("journal"), sub("service")
 
@@ -310,7 +310,7 @@ def _fill(root, months, per_month, card_ids):
 
 
 def test_core8_a_draw_does_not_reparse_the_whole_journal(tmp_path):
-    """CORE-8: with 11 000 journal lines a draw that writes its line costs about what it costs with 100
+    """With 11 000 journal lines a draw that writes its line costs about what it costs with 100
     (before the fix: x50 and more, every draw parsed 12 months)."""
     import statistics
     import time
@@ -337,7 +337,7 @@ def test_core8_a_draw_does_not_reparse_the_whole_journal(tmp_path):
 
 
 def test_core8_cached_reads_match_a_fresh_read(tmp_path):
-    """CORE-8: the cached stats, recent draws and draws equal a fresh fold over the same rows after
+    """The cached stats, recent draws and draws equal a fresh fold over the same rows after
     appends from another Store object (another process), a rating change, a reset and a rewritten file."""
     import json
 
@@ -385,7 +385,7 @@ def test_core8_cached_reads_match_a_fresh_read(tmp_path):
     assert [d["card"] for d in journal.draws(store)][:2] == ["co-10", "co-09"]
 
 
-# --- round 2 (second-pass findings) --------------------------------------------------------------
+# --- the quote-aware pre-scan, shipped names in the user's folder, the catalog cache --------------
 
 def _timed_parse(text):
     import time
@@ -402,7 +402,7 @@ def _timed_parse(text):
 
 @pytest.mark.parametrize("lead", ["[a'b, ", '[a"b, ', '"open, [', "[it's, ", '[x, "y'])
 def test_p2_core_v3_a_quote_inside_a_plain_scalar_does_not_switch_the_depth_scan_off(lead):
-    """P2-CORE-V3: a lone or mid-scalar quote before deep nesting still gets the nesting refused at once."""
+    """A lone or mid-scalar quote before deep nesting still gets the nesting refused at once."""
     text = "x: " + lead + "[" * 1000 + "]" * 1000 + "]\n"
     took, out = _timed_parse(text)
     assert out == "bad_yaml" and took < 0.5, (took, out)
@@ -418,20 +418,20 @@ NEST = "[" * 1000 + "]" * 1000
     'x: [Step - "a ' + NEST + ' b"]\n',  # a dash inside a flow collection
 ], ids=["dash-in-plain", "plain-next-line", "literal-block", "dash-in-flow"])
 def test_p2_core_v3_a_misread_quote_cannot_hide_the_lines_after_it(text):
-    """P2-CORE-V3: a quote the pre-scan cannot be sure of hides nothing beyond its own line."""
+    """A quote the pre-scan cannot be sure of hides nothing beyond its own line."""
     took, out = _timed_parse(text)
     assert out == "bad_yaml" and took < 0.5, (took, out)
 
 
 def test_p2_core_v3_many_groups_under_the_parser_limit_are_refused_fast():
-    """P2-CORE-V3: groups of depth 300 after one lone quote are past the limit, refused before the parser."""
+    """Groups of depth 300 after one lone quote are past the limit, refused before the parser."""
     group = "[" * 300 + "]" * 300
     took, out = _timed_parse('x: [a"b, ' + ", ".join([group] * 16) + "]\n")
     assert out == "bad_yaml" and took < 0.5, (took, out)
 
 
 def test_p2_core_v5_emoticons_in_card_text_are_not_nesting():
-    """P2-CORE-V5: 22 cards with ':[' in plain text load (a ':' opens a value only before whitespace)."""
+    """22 cards with ':[' in plain text load (a ':' opens a value only before whitespace)."""
     decks = sub("decks")
     cards = [card(i + 1, "em", human=f"Stuck again :[ card {i}", agent=f"Note it :[ and try step {i}.")
              for i in range(22)]
@@ -449,7 +449,7 @@ def _user_file_named(tmp_path, slug, prefix="zz"):
 
 
 def test_p2_core_s3_a_user_file_named_like_the_shipped_auto_deck_never_reaches_auto_draw(tmp_path):
-    """P2-CORE-S3: a hand-placed decks/agent-unblock.yaml is refused with a rename hint; auto-draw with the
+    """A hand-placed decks/agent-unblock.yaml is refused with a rename hint; auto-draw with the
     default settings keeps drawing the shipped deck."""
     decks, service, settings = sub("decks"), sub("service"), sub("settings")
     store = _user_file_named(tmp_path, "agent-unblock")
@@ -463,7 +463,7 @@ def test_p2_core_s3_a_user_file_named_like_the_shipped_auto_deck_never_reaches_a
 
 
 def test_p2_core_s1_the_shipped_deck_stays_drawable_and_showable_and_keeps_its_switch(tmp_path):
-    """P2-CORE-S1: with a user file human-unblock.yaml the shipped deck is still drawn, shown and switched as
+    """With a user file human-unblock.yaml the shipped deck is still drawn, shown and switched as
     before; the user's file takes neither its switch nor its learned weights (it is not loaded at all)."""
     decks, service, journal = sub("decks"), sub("service"), sub("journal")
     store = make_store(tmp_path)
@@ -485,7 +485,7 @@ def test_p2_core_s1_the_shipped_deck_stays_drawable_and_showable_and_keeps_its_s
 
 
 def test_p2_core_d1_catalog_parses_an_unchanged_user_deck_once(tmp_path, monkeypatch):
-    """P2-CORE-D1: catalog() keeps parsed user decks by path, size and times; only a changed file is read again,
+    """Catalog() keeps parsed user decks by path, size and times; only a changed file is read again,
     even when an edit keeps the size and puts the old mtime back."""
     import os
 
@@ -517,7 +517,7 @@ def test_p2_core_d1_catalog_parses_an_unchanged_user_deck_once(tmp_path, monkeyp
 
 
 def test_p2_core_d1_a_deck_file_linked_from_outside_the_data_folder_stays_out(tmp_path):
-    """P2-CORE-D1: the faster path check still refuses a user deck file that links out of the data folder."""
+    """The faster path check still refuses a user deck file that links out of the data folder."""
     decks = sub("decks")
     store = make_store(tmp_path)
     outside = tmp_path / "elsewhere"

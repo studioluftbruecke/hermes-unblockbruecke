@@ -1,0 +1,33 @@
+schema: 1
+deck: my-notes
+name: My notes
+by: Me
+license: own
+version: 3
+faces:
+- human
+- agent
+mark: circle
+description: 'Notes: what helps me.'
+cards:
+- id: mn-01
+  human: 'Look at the data: what changed since it last worked?'
+  agent: 'Read the data: list the three fields that differ between the last good run and this one.'
+  tags:
+  - auto
+- id: mn-02
+  human: 'Open the file: read only the first ten lines.'
+  agent: Read __init__.py first and name the one import the error points at before changing anything.
+  tags: []
+- id: mn-03
+  human: 'Finish the sentence: I am stuck because ____.'
+  agent: Check the node.js/npm versions the error names before reinstalling anything.
+  tags: []
+- id: mn-04
+  human: Write the goal as [what] (one line), then the first step.
+  agent: 'Before retrying over SSH: run one command that only prints the host name, then decide.'
+  tags: []
+- id: mn-05
+  human: Name the person you would ask, then ask them.
+  agent: Restate the goal in one sentence before the next call.
+  tags: []

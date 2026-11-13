@@ -1,6 +1,6 @@
-"""Decks as data (F1): the file shape, the plain-text rules, loading and merging.
+"""Decks as data: the file shape, the plain-text rules, loading and merging.
 
-A deck is a YAML file read with `ruamel.yaml`'s safe loader (U9; PyYAML is not in Hermes' venv).
+A deck is a YAML file read with `ruamel.yaml`'s safe loader (PyYAML is not in Hermes' venv).
 Three sources, merged in this order:
 
 1. shipped: `data/decks/*.yaml` in the plugin (read-only), loaded once at import;
@@ -8,8 +8,10 @@ Three sources, merged in this order:
 3. user: `decks/*.yaml` in the data folder: the user's own decks, imported decks, and own copies of
    shipped decks. An own copy is saved as `<slug>-own` and replaces `<slug>` for drawing.
 
-The loader refuses a card that breaks a rule and names the rule (contract §2, PLAN constraint 5):
-auto-draw puts a deck's text into the model's context, so card text is plain text only.
+The loader refuses a card that breaks a rule and names the rule: auto-draw puts a deck's text into
+the model's context, so card text is plain text only (no markup, links, commands or mentions). The
+rules catch mistakes and the obvious tricks; they cannot judge what a sentence asks for, so an
+imported deck starts with its Hermes switch off and the user reads it before switching it on.
 The Desktop never parses YAML: routes answer JSON.
 """
 from __future__ import annotations
@@ -34,7 +36,7 @@ SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9-]{1,39}$")
 ID_RE = re.compile(r"^([a-z]{2,4})-(\d{2})$")
 TAG_RE = re.compile(r"^[a-z][a-z0-9-]{1,20}$")
 LICENSES = ("CC-BY-4.0", "CC0-1.0", "own")
-# 0.2: a glyph per shipped deck (the sketch pick); own decks may keep 0.1's six shapes.
+# A glyph per shipped deck; own decks may keep the six flat shapes of 0.1.
 MARKS = ("person", "code", "pencil", "shapes", "sphere", "robot",
          "square", "circle", "triangle", "diamond", "half", "ring")
 HUMAN_MAX, AGENT_MAX = 90, 220
@@ -42,6 +44,7 @@ MAX_CARDS = 200
 MAX_FILE_BYTES = 256 * 1024
 MAX_PROBLEMS = 50
 MAX_DEPTH = 20
+MAX_NODES = 20_000  # values in a parsed file with aliases expanded; a full deck of 200 cards holds about 1,500
 OWN_SUFFIX = "-own"
 
 BUILTIN_TAGS = {
@@ -49,18 +52,32 @@ BUILTIN_TAGS = {
     "auto": "Written for Hermes when its tool calls keep failing; Hermes draws only these when stuck.",
 }
 
-# Plain-text rules (contract §2). Each: (rule id, compiled pattern, what the user reads).
+# Short-link hosts whose top-level domain the bare-domain list below does not hold.
+SHORT_LINK_HOSTS = ("bit.ly", "t.co", "goo.gl", "ow.ly", "is.gd", "v.gd", "buff.ly", "rb.gy", "cutt.ly", "t.ly",
+                    "shorturl.at", "tiny.cc", "rebrand.ly", "lnkd.in", "youtu.be", "s.id", "t.me", "wa.me", "dub.sh",
+                    "bl.ink")
+
+# Plain-text rules. Each: (rule id, compiled pattern, what the user reads). They target what a model would
+# follow or a page would render, never ordinary prose: an address scheme counts only with its address
+# right after the colon ("data:text/html;...", not "the data: what changed"), and a host with a path only
+# when it is a known short-link host ("node.js/npm" is prose).
 TEXT_RULES: list[tuple[str, re.Pattern, str]] = [
-    ("html", re.compile(r"<\s*[A-Za-z/!]"), "no HTML tags"),
-    ("markdown_link", re.compile(r"\[[^\[\]]*\]\([^)]*\)"), "no Markdown links"),
+    ("html", re.compile(r"<\s*[A-Za-z/!@#]"), "no HTML tags"),
+    ("markdown_link", re.compile(r"\[[^\[\]]*\][(\[]"), "no Markdown links"),
     ("code", re.compile(r"`"), "no backticks or code fences"),
-    ("url", re.compile(r"(?i)\b(?:https?://|ftp://|www\.)|\b[a-z0-9-]+\.(?:com|org|net|io|de|dev|app|ai|co|uk|info|xyz|me)\b"),
+    ("url", re.compile(r"(?i)\b(?:https?://|ftp://|www\.)|\b[a-z0-9-]+\.(?:com|org|net|io|de|dev|app|ai|co|uk|info|xyz|me)\b"
+                       r"|\b(?:" + "|".join(re.escape(h) for h in SHORT_LINK_HOSTS) + r")/"
+                       r"|\b(?:javascript|vbscript|mailto):\S|\bfile:/|\bdata:(?:[\w.+-]+/[\w.+-]+)?[;,]"),
      "no web addresses"),
-    ("shell", re.compile(r"\$\(|\|\s*(?:sudo\s+)?(?:ba|z|da|k)?sh\b|\brm\s+-|\bsudo\b|\bcurl\b|\bwget\b|\bchmod\b|\bgit\s+push\b"),
+    ("shell", re.compile(r"\$\(|\|\s*(?:sudo\s+)?(?:ba|z|da|k)?sh\b|\brm\s+-|\bsudo\b|\bcurl\b|\bwget\b|\bchmod\b|\bgit\s+push\b"
+                         r"|(?i:\b(?:python[0-9.]*|node|deno|perl|ruby|php|bash|zsh|sh|pwsh|powershell)\s+-(?:c|e|r|command)\b)"),
      "no shell commands"),
+    ("mention", re.compile(r"(?<![\w.])@[A-Za-z0-9_]"), "no @mentions"),
 ]
 
 DECK_KEYS = ("schema", "deck", "name", "by", "license", "version", "faces", "mark", "cards")
+FILE_KEYS = ("schema", "deck", "name", "by", "license", "version", "faces", "mark", "description", "voice",
+             "area", "glossary", "cards")  # every key a deck file may hold, in the order the plugin writes them
 
 
 class Problems(list):
@@ -205,14 +222,36 @@ def parse_yaml(text: str) -> Any:
     if flow_depth(text) > MAX_DEPTH:  # the parser's time grows much faster than the nesting
         raise DeckError(f"not valid YAML: lists or mappings nest deeper than {MAX_DEPTH} levels", code="bad_yaml")
     try:
-        return _yaml().load(text)
+        doc = _yaml().load(text)
     except Exception as exc:  # ruamel raises many types; the user needs the line, not the class
         raise DeckError(f"not valid YAML: {str(exc).splitlines()[0] if str(exc) else type(exc).__name__}",
                         code="bad_yaml") from exc
+    if expanded_size(doc) > MAX_NODES:
+        raise DeckError(f"not valid for a deck: the file expands to more than {MAX_NODES} values (YAML aliases)",
+                        code="bad_yaml")
+    return doc
+
+
+def expanded_size(doc: Any, stop: int = MAX_NODES) -> int:
+    """How many values `doc` holds once every YAML alias is expanded, counting stops past `stop`. The parser
+    keeps an alias as a shared reference, so a few hundred bytes of doubling aliases parse at once and only
+    explode when something walks or prints them; this walk costs at most `stop` steps."""
+    count, todo = 0, [doc]
+    while todo:
+        node = todo.pop()
+        count += 1
+        if count > stop:
+            return count
+        if isinstance(node, dict):
+            todo.extend(node.keys())
+            todo.extend(node.values())
+        elif isinstance(node, (list, tuple)):
+            todo.extend(node)
+    return count
 
 
 def dump_yaml(deck: dict) -> str:
-    """A deck as YAML in the file shape (key order of the contract, no source fields)."""
+    """A deck as YAML in the file shape (keys in FILE_KEYS order, no source fields)."""
     from ruamel.yaml import YAML
 
     y = YAML()
@@ -226,9 +265,7 @@ def dump_yaml(deck: dict) -> str:
 
 
 def file_shape(deck: dict) -> dict:
-    keys = ("schema", "deck", "name", "by", "license", "version", "faces", "mark", "description", "voice",
-            "area", "glossary", "cards")
-    out = {k: deck[k] for k in keys if k in deck and deck[k] not in (None, "", {})}
+    out = {k: deck[k] for k in FILE_KEYS if k in deck and deck[k] not in (None, "", {})}
     out["schema"] = SCHEMA
     if out.get("glossary"):
         # Sorted, so the same deck always writes the same file (the editor's confirm hash relies on it).
@@ -238,14 +275,17 @@ def file_shape(deck: dict) -> dict:
     return out
 
 
-def validate(doc: Any, slug: Optional[str] = None, tags_required: bool = True) -> tuple[Optional[dict], list[dict]]:
+def validate(doc: Any, slug: Optional[str] = None, tags_required: bool = True,
+             file: bool = False) -> tuple[Optional[dict], list[dict]]:
     """(normalised deck or None, problems). `slug` is the file name the deck must match, if any.
     `tags_required`: shipped and community deck files need 1 to 4 tags per card; the user's own and
-    imported decks may have none (0.2, D21).
+    imported decks may have none. `file`: `doc` is a deck file as read, so the deck lists the keys no deck
+    file holds under `unknown_keys` (a save drops them); an edit built from the agent's or the page's fields
+    is not checked so.
 
     Never raises: a field of the wrong type is a problem line like any other rule."""
     try:
-        deck, probs = _validate(doc, slug, tags_required)
+        deck, probs = _validate(doc, slug, tags_required, file)
         return deck, capped(probs)
     except Exception as exc:  # a shape no rule foresaw is still a refusal, never a crash of the catalog
         return None, [problem("shape", f"the deck has a shape the loader cannot read ({type(exc).__name__})")]
@@ -255,7 +295,8 @@ def _face(value: Any) -> str:
     return value.strip() if isinstance(value, str) else ""
 
 
-def _validate(doc: Any, slug: Optional[str], tags_required: bool = True) -> tuple[Optional[dict], list[dict]]:
+def _validate(doc: Any, slug: Optional[str], tags_required: bool = True,
+              file: bool = False) -> tuple[Optional[dict], list[dict]]:
     probs: list[dict] = []
     if not isinstance(doc, dict):
         return None, [problem("shape", "a deck file is a mapping with deck, name, cards, ...")]
@@ -264,10 +305,13 @@ def _validate(doc: Any, slug: Optional[str], tags_required: bool = True) -> tupl
             probs.append(problem("missing", f"the deck has no '{key}'"))
     if probs:
         return None, probs
+    # Named, never refused: a deck that loaded before keeps loading, and its answers say the keys are lost
+    # on the next save.
+    unknown = sorted(str(k) for k in doc if k not in FILE_KEYS) if file else []
     if doc.get("schema") != SCHEMA:
         probs.append(problem("schema", f"schema must be {SCHEMA}"))
     deck_slug = doc.get("deck")
-    if not isinstance(deck_slug, str) or not SLUG_RE.match(deck_slug):
+    if not isinstance(deck_slug, str) or not SLUG_RE.fullmatch(deck_slug):
         probs.append(problem("slug", "deck must be 2 to 40 characters of a-z, 0-9 and '-'"))
     elif slug is not None and deck_slug != slug:
         probs.append(problem("slug", f"deck '{deck_slug}' must equal the file name '{slug}'"))
@@ -295,7 +339,7 @@ def _validate(doc: Any, slug: Optional[str], tags_required: bool = True) -> tupl
         glossary = {}
     clean_glossary: dict[str, str] = {}
     for tag, words in glossary.items():
-        if (not isinstance(tag, str) or not TAG_RE.match(tag) or not isinstance(words, str) or not words.strip()
+        if (not isinstance(tag, str) or not TAG_RE.fullmatch(tag) or not isinstance(words, str) or not words.strip()
                 or len(words) > 120 or "\n" in words):
             probs.append(problem("glossary", f"glossary entry '{tag}' needs a tag name and one line of at most 120 characters"))
             continue
@@ -316,7 +360,7 @@ def _validate(doc: Any, slug: Optional[str], tags_required: bool = True) -> tupl
             continue
         cid = card.get("id")
         label = cid if isinstance(cid, str) else f"#{n}"
-        m = ID_RE.match(cid) if isinstance(cid, str) else None
+        m = ID_RE.fullmatch(cid) if isinstance(cid, str) else None
         if not m:
             probs.append(problem("id", "id must look like ag-03 (2 to 4 letters, a dash, two digits)", label))
         else:
@@ -334,7 +378,7 @@ def _validate(doc: Any, slug: Optional[str], tags_required: bool = True) -> tupl
             probs.append(problem("tags", "a card has 1 to 4 tags" if tags_required else "a card has at most 4 tags", label))
             tags = [t for t in (tags or []) if isinstance(t, str)] if isinstance(tags, list) else []
         for tag in tags:
-            if not TAG_RE.match(tag):
+            if not TAG_RE.fullmatch(tag):
                 probs.append(problem("tags", f"tag '{tag}' must be a short lowercase word", label))
             elif tag not in BUILTIN_TAGS and tag not in clean_glossary:
                 probs.append(problem("tags", f"tag '{tag}' has no glossary entry in plain words", label))
@@ -352,11 +396,24 @@ def _validate(doc: Any, slug: Optional[str], tags_required: bool = True) -> tupl
     deck["glossary"] = clean_glossary
     deck["cards"] = clean_cards
     deck["prefix"] = next(iter(prefixes)) if prefixes else ""
+    if unknown:
+        deck["unknown_keys"] = unknown
     return deck, []
 
 
+def unknown_keys_warning(keys: list) -> str:
+    """What a deck list says about a deck file that holds keys this version does not know."""
+    return f"keys this version does not know: {', '.join(keys)[:200]}; a save from the page or the agent does not keep them"
+
+
+def unknown_keys_problem(keys: list) -> dict:
+    """The same keys as a problem line, for a deck file proposed to the plugin (`check_deck.py`)."""
+    return problem("unknown_key", f"the deck has keys this version does not know: {', '.join(keys)[:200]}"
+                                  f" (a deck file holds {', '.join(FILE_KEYS)})")
+
+
 def load_text(text: str, slug: Optional[str] = None, tags_required: bool = True) -> dict:
-    deck, probs = validate(parse_yaml(text), slug, tags_required)
+    deck, probs = validate(parse_yaml(text), slug, tags_required, file=True)
     if deck is None:
         raise DeckError(summary(probs), probs)
     return deck
@@ -413,9 +470,9 @@ def reload_shipped() -> None:
     SHIPPED, SHIPPED_BROKEN = _load_shipped()
 
 
-# --- switches (F13) ------------------------------------------------------------------------------
+# --- switches ------------------------------------------------------------------------------
 
-HERMES_DEFAULT = ("agent-unblock", "agent-unblock-own")  # 0.2: Hermes draws from the Agent deck alone by default
+HERMES_DEFAULT = ("agent-unblock", "agent-unblock-own")  # Hermes draws from the Agent deck alone by default
 SEED_KEY = "hermes_seed"
 
 
@@ -465,7 +522,7 @@ def set_switch(store: Store, slug: str, draw: Optional[bool] = None, auto: Optio
 
 
 def seed_hermes_switches(store: Store, legacy_decks: Any) -> bool:
-    """Once per data folder (PLAN-v0.2 M2): write each deck's Hermes switch from 0.1's rule, so an update
+    """Once per data folder: write each deck's Hermes switch from 0.1's rule, so an update
     changes no deck Hermes drew from. 0.1 drew from a deck when its name (or the own copy that replaced
     it) was in `autodraw_decks` and its `auto` switch was on. A missing list means 0.1's default
     `["agent-unblock"]`; `[]` means none. True when this call wrote the seed."""
@@ -574,7 +631,7 @@ def user_decks(store: Store, switches: Optional[dict] = None) -> tuple[dict[str,
         if not name.endswith(".yaml"):
             continue
         slug = name[:-5]
-        if not SLUG_RE.match(slug):
+        if not SLUG_RE.fullmatch(slug):
             continue
         holder = taken_by(slug)
         if holder:
@@ -668,7 +725,7 @@ def find_card(deck: dict, card_id: str) -> Optional[dict]:
 
 
 def explain_tags(deck: dict, tags: list) -> list[dict]:
-    """"Why this card?" in plain words (F16)."""
+    """"Why this card?" in plain words."""
     glossary = deck.get("glossary") or {}
     return [{"tag": t, "means": BUILTIN_TAGS.get(t) or glossary.get(t, "")} for t in tags]
 
@@ -682,4 +739,6 @@ def deck_summary(deck: dict) -> dict:
     out["cards"] = len(cards)
     out["auto_cards"] = sum(1 for c in cards if "auto" in c["tags"])
     out["human_cards"] = sum(1 for c in cards if "human" in c["tags"])
+    if deck.get("unknown_keys"):
+        out["warning"] = unknown_keys_warning(deck["unknown_keys"])
     return out

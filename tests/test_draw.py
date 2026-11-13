@@ -35,7 +35,7 @@ def test_auto_prefers_auto_cards_and_unattended_skips_human():
 
 
 def test_auto_never_falls_back_to_cards_not_written_for_it():
-    """0.2 (AX-6): auto-draw uses only `auto` cards; 0.1 fell back to every card of the deck."""
+    """0.2: auto-draw uses only `auto` cards; 0.1 fell back to every card of the deck."""
     draw = sub("draw")
     deck = load(deck_doc())
     assert draw.candidates([deck], "auto") == []

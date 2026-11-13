@@ -1,4 +1,4 @@
-// Small UI helpers, the deck marks and the physical card (0.2 sketch A: card stock, the corner with
+// Small UI helpers, the deck marks and the physical card (card stock, the corner with
 // the deck mark and the card number, the front with the line and the deck, the back headed "For
 // Hermes", the 3D turn on a click; the card back with the dotted pattern and the deck mark).
 import * as SDK from '@hermes/plugin-sdk'
@@ -16,7 +16,7 @@ export const hk = (key, tag, props, ...children) => {
 }
 
 /** A button: Desktop's own Button (variants default, secondary, text; sizes sm, default, lg) when the
- *  SDK has it (HX-14), else a plain button in the same look. */
+ *  SDK has it, else a plain button in the same look. */
 export const Btn = ({ pri, sm, lg, danger, text, strong, children, className, ...rest }) => {
   const Button = SDK.Button
   if (Button) {
@@ -27,10 +27,9 @@ export const Btn = ({ pri, sm, lg, danger, text, strong, children, className, ..
 }
 
 // ---- deck marks ----------------------------------------------------------------------------------
-// One flat glyph per deck that names its subject (his pick at the sketch, 2026-11-12): a person
+// One flat glyph per deck that names its subject: a person
 // (Human), two chevrons (Coding), a pencil (Writing), a triangle, a square and a circle (Design), a
-// shaded sphere (Shaders), a robot head (Agent). Paths from v0.2/sketches/index.html GLYPH, 16 x 16,
-// drawn in currentColor. A deck without a subject glyph (own, imported, community) keeps the pip its
+// shaded sphere (Shaders), a robot head (Agent). Paths on a 16 x 16 grid, drawn in currentColor. A deck without a subject glyph (own, imported, community) keeps the pip its
 // deck file names in `mark` (square, circle, triangle, diamond, half, ring), drawn the same flat way.
 let shadeId = 0
 const GLYPHS = {
@@ -61,7 +60,7 @@ const GLYPHS = {
   ring: () => h('circle', { cx: 8, cy: 8, r: 5.8, fill: 'none', stroke: 'currentColor', strokeWidth: 2 }),
 }
 
-// The six shipped decks by file name, in the chip order he fixed; an own copy (`coding-own`,
+// The six shipped decks by file name, in the fixed chip order; an own copy (`coding-own`,
 // `copy_of: coding`) takes its deck's glyph and place.
 export const SUBJECT = { 'human-unblock': 'person', coding: 'code', writing: 'pencil', design: 'shapes', shaders: 'sphere', 'agent-unblock': 'robot' }
 const SUBJECT_NAMES = new Set(Object.values(SUBJECT))
@@ -97,7 +96,7 @@ export const CardIcon = ({ size = 12 }) =>
     hk('a', 'rect', { x: 1, y: 2.6, width: 6, height: 8.4, rx: 1, transform: 'rotate(-10 4 6.8)' }),
     hk('b', 'rect', { x: 4.6, y: 1, width: 6, height: 8.4, rx: 1 }))
 
-/** The card number without the deck's short code: 05 for co-05 (his words: the icon and the number
+/** The card number without the deck's short code: 05 for co-05 (the icon and the number
  *  are enough to identify the card). */
 export const cardNumber = id => String(id || '').split('-').pop()
 

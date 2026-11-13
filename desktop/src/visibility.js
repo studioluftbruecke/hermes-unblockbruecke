@@ -1,9 +1,9 @@
 // What the plugin shows in Desktop's frame: the sidebar row "Unblockbrücke" and the Draw button in the
-// status bar (show_in_statusbar, PLAN-v0.1.3 M3).
+// status bar (show_in_statusbar).
 //
-// The sidebar row comes from the shared module (./sidebar-row.js, experiments/sidebar-rows/PLAN.md): its
+// The sidebar row comes from the shared module (./sidebar-row.js, the same in every Studio Luftbrücke plugin): its
 // show switch and position are kept per Desktop in ctx.storage 'sidebar' and set on the plugin's settings
-// page. The config key show_in_sidebar is retired (D4). One-time seed (V5): with no stored choice the row
+// page. The config key show_in_sidebar is retired. One-time seed: with no stored choice the row
 // shows at start, and the FIRST GET /settings answer is applied once (show = show_in_sidebar !== false)
 // and stored, so a Desktop updated from 0.1.3 keeps a row its user had switched off hidden after that
 // read. A choice stored before the answer arrives wins; an answer without the key stores the defaults.
@@ -17,8 +17,8 @@
 // at once and a user who turned it off sees no flash at start (RV6).
 //
 // The button is a status-bar *data* item that owns its slot through `render`: only such an item can set
-// `toggleLabel`, which lists it in Desktop's right-click show/hide menu under that name (P-SB,
-// experiments/unblockbruecke/v0.1.3/probe-statusbar.out). Desktop keeps the hidden list by `data.id`,
+// `toggleLabel`, which lists it in Desktop's right-click show/hide menu under that name (measured on
+// Desktop 0.23). Desktop keeps the hidden list by `data.id`,
 // which the plugin context does not prefix, so the id carries the plugin's name itself.
 import { atom, Input, queryClient, SIDEBAR_NAV_AREA, STATUSBAR_AREAS, Switch, useValue } from '@hermes/plugin-sdk'
 import { jsx, jsxs } from 'react/jsx-runtime'

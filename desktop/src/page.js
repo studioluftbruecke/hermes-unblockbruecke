@@ -6,11 +6,12 @@ import { useValue } from '@hermes/plugin-sdk'
 import { useEffect, useState } from 'react'
 import { jsx } from 'react/jsx-runtime'
 
-import { $connection, NOT_ON_TEXT, OFFLINE_TEXT, PATH, SCHEMA_TEXT } from './core.js'
+import { $connection, NOT_ON_TEXT, OFFLINE_TEXT, SCHEMA_TEXT } from './core.js'
 import { DecksView } from './decks.js'
 import { DrawView } from './draw.js'
 import { HermesView } from './hermes.js'
 import { useDecks } from './queries.js'
+import { openPage } from './state.js'
 import { h, hk } from './ui.js'
 
 export const VIEWS = [['draw', 'Draw'], ['hermes', 'Hermes'], ['decks', 'Decks']]
@@ -31,7 +32,7 @@ function useView() {
     return () => window.removeEventListener('hashchange', on)
   }, [])
   const go = v => {
-    window.location.hash = `#${PATH}${v === 'draw' ? '' : `?view=${v}`}`
+    openPage(v)
     setView(v)
   }
   return [view, go]
@@ -48,7 +49,7 @@ export function ConnectionNote({ error }) {
   return h('div', { className: 'banner err', role: 'status', 'data-ubk': 'connection' }, text)
 }
 
-/** Desktop's Tabs (HX-14) when the SDK has them, else tab buttons in the same look. */
+/** Desktop's Tabs when the SDK has them, else tab buttons in the same look. */
 function TabBar({ view, go }) {
   const { Tabs, TabsList, TabsTrigger } = SDK
   if (Tabs && TabsList && TabsTrigger) {

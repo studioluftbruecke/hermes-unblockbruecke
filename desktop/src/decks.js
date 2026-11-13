@@ -1,6 +1,6 @@
-// The Decks tab (F12, F13, 0.2 M4): the library with one Draw switch per deck (the switch for Hermes
+// The Decks tab: the library with one Draw switch per deck (the switch for Hermes
 // is on the Hermes tab), the selected deck's cards with what the journal says about them, and the
-// editor. Your own decks save at once (one PUT per edit) with Undo and no Preview (D21); a shipped deck
+// editor. Your own decks save at once (one PUT per edit) with Undo and no Preview; a shipped deck
 // has one "Make my own copy", which still goes preview -> diff -> Save, like an import. Tags are
 // optional in your own decks; the file name is never asked for. Row actions show on hover or focus.
 import { ConfirmDialog, Switch } from '@hermes/plugin-sdk'
@@ -364,7 +364,7 @@ function NewDeck({ decks, onCancel, onSave }) {
       onPreview: v => !problem && onSave(slug, { label: `new deck ${name.trim()}`, body: { changes: { meta: { name: name.trim() }, add: [v] } } }) }))
 }
 
-/** Save an edit of your own deck at once (D21): one PUT without a preview. A backend that still wants
+/** Save an edit of your own deck at once: one PUT without a preview. A backend that still wants
  *  the preview's confirm value (0.1) or refuses the change answers with an error; the caller then
  *  shows the preview panel, which explains the refusal or saves the 0.1 way. */
 async function saveAtOnce(slug, change) {
@@ -399,7 +399,7 @@ function DeckSheet({ slug, onSelect, setNote }) {
   if (q.error) return h('div', { className: 'panel', style: { padding: 16 } }, h('p', { className: 'note' }, `The deck did not load: ${q.error.message}`))
   const deck = q.data.deck
   const own = isOwn(deck) && deck.editable !== false
-  // v0.2-contract.md §5: GET /decks/{slug} says whether a PUT without a preview saves (your own deck);
+  // GET /decks/{slug} says whether a PUT without a preview saves (your own deck);
   // an imported deck and a backend without the field go through the preview.
   const atOnce = deck.saves_at_once !== undefined ? !!deck.saves_at_once : deck.source === 'own'
   const versionsSlug = deck.edits_save_as || deck.deck
@@ -478,6 +478,7 @@ export function DecksView({ decksData }) {
     return null
   }
   const broken = Object.entries(decksData.broken || {})
+  const warned = (decksData.decks || []).filter(d => d.warning)
   return h('div', { className: 'col', style: { gap: 18 } },
     h('div', { className: 'decksheet' },
       h('div', { className: 'col' },
@@ -496,7 +497,8 @@ export function DecksView({ decksData }) {
             const replaced = out.replaced !== undefined ? !!out.replaced : !!(out.undo && out.undo.restore !== undefined)
             setNote({ text: n => `${replaced ? 'Replaced' : 'Imported'} ${n(out.deck)} (${out.cards} cards). ${out.note || ''}`.trim(), undo: undoFor(out.deck, out.undo, text => setNote({ text })) })
           } }))),
-        broken.length ? h('div', { className: 'banner err' }, h('strong', null, 'Not loaded'), broken.map(([s, r]) => hk(s, 'p', { className: 'note' }, `${s}: ${r}`))) : null),
+        broken.length ? h('div', { className: 'banner err' }, h('strong', null, 'Not loaded'), broken.map(([s, r]) => hk(s, 'p', { className: 'note' }, `${s}: ${r}`))) : null,
+        warned.length ? h('div', { className: 'banner' }, h('strong', null, 'Loaded with a note'), warned.map(d => hk(d.deck, 'p', { className: 'note' }, `${d.deck}: ${d.warning}`))) : null),
       newDeck ? (newDeck.change
         ? h(PreviewPanel, { slug: newDeck.slug, change: newDeck.change, onCancel: () => setNewDeck(null), onSaved: out => {
           setNewDeck(null)

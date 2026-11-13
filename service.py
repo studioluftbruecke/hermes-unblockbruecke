@@ -50,7 +50,7 @@ def pick_decks(cat: dict, settings: dict, deck: Optional[str] = None, decks: Opt
             raise LookupError(f"no deck named {echo(missing)}; decks: {known}")
         return found
     if context == "auto":
-        # 0.2: each deck's Hermes switch decides (seeded once from a stored autodraw_decks).
+        # Each deck's Hermes switch decides (seeded once from a stored autodraw_decks).
         return decks_mod.hermes_decks(cat)
     on = decks_mod.drawable(cat)
     preferred = {"break": HUMAN_DECK, "human": HUMAN_DECK, "stuck": AGENT_DECK}.get(context)

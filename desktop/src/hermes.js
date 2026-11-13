@@ -1,4 +1,4 @@
-// The Hermes tab (0.2 sketch A): one switch "Hermes draws when stuck" with one sentence and an example
+// The Hermes tab: one switch "Hermes draws when stuck" with one sentence and an example
 // card (front and back), how many failed calls bring a card, the switch of each deck that has cards
 // written for Hermes, and what Hermes drew lately with where the turn ran and what the next call did.
 // The switch and the count save through POST /setting (a fixed list of keys); Desktop's own plugin
@@ -19,7 +19,7 @@ import { Card, h, hk } from './ui.js'
 export const THRESHOLDS = [2, 3, 4, 5, 6]
 const EXAMPLE_ID = 'ag-03'
 
-/** The sentence under the switch, for a count of failed calls (D16: n of the last n + 2). */
+/** The sentence under the switch, for a count of failed calls (n of the last n + 2). */
 export const hermesSentence = n => `After ${n} failed tool calls out of the last ${n + 2}, Hermes gets one card with a next move.`
 
 /** One saved setting. `queryClient` gets the answer (the same body as GET /settings) at once. */
@@ -49,7 +49,7 @@ function Count({ value, onChange, disabled }) {
     options.map(o => hk(o.id, 'button', { type: 'button', 'aria-pressed': String(value) === o.id, disabled, onClick: () => onChange(Number(o.id)) }, o.label)))
 }
 
-/** The example card under the switch: `hermes.example` from GET /settings (v0.2-contract.md §2), else
+/** The example card under the switch: `hermes.example` from GET /settings, else
  *  an `auto` card read from the deck (a backend without the field). */
 function Example({ slug, example }) {
   const q = useDeck(slug, { staleTime: 300000, enabled: !example })
@@ -71,7 +71,7 @@ function Row({ title, sub, control, below, off, ubk }) {
 }
 
 function Lately() {
-  // by=hermes: Hermes' draws, asked for in a chat or drawn when stuck (v0.2-contract.md §4).
+  // by=hermes: Hermes' draws, asked for in a chat or drawn when stuck.
   const q = useJournal({ by: 'hermes', limit: 8 })
   const rated = useValue($rated)
   const draws = (q.data && q.data.draws) || []
@@ -99,7 +99,7 @@ export function HermesView({ decksData }) {
   const settings = useSettings()
   const s = settingsOf(settings.data)
   const decks = visibleDecks(decksData && decksData.decks)
-  // Only decks with cards written for Hermes get a switch: Hermes draws `auto` cards only (M2).
+  // Only decks with cards written for Hermes get a switch: Hermes draws `auto` cards only.
   const forHermes = decks.filter(d => d.auto_cards > 0)
   const on = !!(s && s.autodraw)
   const threshold = (s && s.autodraw_threshold) || 3

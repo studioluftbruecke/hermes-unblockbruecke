@@ -1,4 +1,4 @@
-"""Decks as data: the loader's rules (contract §2), merge order, switches, own copies."""
+"""Decks as data: the loader's rules, merge order, switches, own copies."""
 import pytest
 
 from ub_fakes import card, deck_doc, make_store, sub, write_user_deck, yaml_text
@@ -119,7 +119,7 @@ def test_catalog_merges_user_decks_and_switch_defaults(tmp_path, monkeypatch):
     assert cat["decks"]["mine"]["source"] == "own" and cat["decks"]["mine"]["switch"] == {"draw": True, "auto": False}
     assert cat["decks"]["bought"]["source"] == "imported"
     assert cat["decks"]["bought"]["switch"] == {"draw": True, "auto": False}  # imported: off for auto-draw
-    assert cat["decks"]["ship-one"]["source"] == "shipped" and "shadows" not in cat["decks"]["ship-one"]  # P2-CORE-S3
+    assert cat["decks"]["ship-one"]["source"] == "shipped" and "shadows" not in cat["decks"]["ship-one"]
     assert "belongs to a shipped deck" in cat["broken"]["ship-one"] and "shadowed" not in cat
     assert "(shell)" in cat["broken"]["broken"]
 
@@ -166,7 +166,7 @@ def test_shipped_decks_load_without_problems():
 
 
 def test_shipped_deck_set_matches_the_plan():
-    """PLAN M1, A12 and PLAN-new-cards: Agent 24 (at least 12 auto), Human 28, Coding 8, Design,
+    """The shipped decks: Agent 24 (at least 12 auto), Human 28, Coding 8, Design,
     Shaders and Writing 16 each: 108 cards."""
     shipped = sub("decks").SHIPPED
     assert set(shipped) == {"agent-unblock", "human-unblock", "coding", "design", "shaders", "writing"}
@@ -177,7 +177,7 @@ def test_shipped_deck_set_matches_the_plan():
     for area in ("coding", "design", "shaders", "writing"):
         assert shipped[area].get("area") == area
     ag03 = sub("decks").find_card(shipped["agent-unblock"], "ag-03")
-    assert ag03["agent"].startswith("Name the one assumption your last three attempts shared")  # U5's card
+    assert ag03["agent"].startswith("Name the one assumption your last three attempts shared")  # the card the auto-draw tests expect
     for deck in shipped.values():
         assert deck["license"] == "CC-BY-4.0" and deck["by"] == "Studio Luftbrücke"
     marks = [d["mark"] for d in shipped.values()]
@@ -208,7 +208,7 @@ def test_check_deck_reports_the_real_total_and_how_many_are_not_listed(tmp_path,
 
 
 def test_check_deck_script(tmp_path, capsys):
-    """F14: ok per good file, each broken rule with its card per bad file, exit 1 when any fails."""
+    """Ok per good file, each broken rule with its card per bad file, exit 1 when any fails."""
     mod = _check_deck_script()
     good = tmp_path / "test-deck.yaml"
     good.write_text(yaml_text(deck_doc()), encoding="utf-8")
@@ -222,7 +222,7 @@ def test_check_deck_script(tmp_path, capsys):
 
 
 def test_d11_the_plugin_ships_no_originality_data():
-    """P2-CORE-O3 (D11): no file of the plugin holds data derived from the original Oblique Strategies, and no
+    """No file of the plugin holds data derived from the original Oblique Strategies, and no
     module loads it; the check runs privately when a deck is proposed."""
     import pathlib
 

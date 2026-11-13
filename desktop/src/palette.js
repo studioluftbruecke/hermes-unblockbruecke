@@ -1,4 +1,4 @@
-// Palette rows (F9, the 0.2 names table): "Draw a card", "Draw from <deck name>" per drawable deck,
+// Palette rows: "Draw a card", "Draw from <deck name>" per drawable deck,
 // and "Open Unblockbrücke" (the page, also when the sidebar row is hidden).
 // Rows register at load and again whenever the deck list may have changed (a switch, a save).
 import { PALETTE_AREA, queryClient } from '@hermes/plugin-sdk'

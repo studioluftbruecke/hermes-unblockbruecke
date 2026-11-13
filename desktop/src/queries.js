@@ -42,8 +42,8 @@ export function useVersions(slug) {
   return useQuery({ queryKey: key(profile, 'versions', slug), queryFn: () => api.versions(slug), enabled: !!slug, retry: false })
 }
 
-/** Q3: the newest draw by Hermes in one chat, polled every 5 s while Desktop is in front, and only while
- *  "Hermes draws when stuck" is on (HX-15): with the feature off nothing polls. */
+/** The newest draw by Hermes in one chat, polled every 5 s while Desktop is in front, and only while
+ *  "Hermes draws when stuck" is on: with the feature off nothing polls. */
 export function useAutoDraw(sessionId, on) {
   const profile = useProfile()
   return useQuery({

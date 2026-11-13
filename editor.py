@@ -1,4 +1,4 @@
-"""Deck editor (F12): preview with a diff, save with versions, restore, delete, import, export.
+"""Deck editor: preview with a diff, save with versions, restore, delete, import, export.
 
 Shipped and community decks are never changed: an edit saves an own copy `<slug>-own` that replaces
 the original for drawing. Every save keeps a version (`decks.versions/<slug>/<n>.yaml` plus an
@@ -8,7 +8,7 @@ can be undone from the page or by the agent.
 A save must name the `confirm` value its preview returned: it is a hash of the file the preview
 started from and the text it would write, so a save never lands on a deck that changed since the
 preview (another window, the agent, a second route call), and the agent always shows the diff first.
-0.2 (D21): a person's edit of an own deck (or a new one) saves at once, without a preview; the version
+A person's edit of an own deck (or a new one) saves at once, without a preview; the version
 it writes is its Undo. The first own copy of a shipped deck, imported decks and the agent's edits keep
 the preview. Tags are optional in the user's decks.
 """
@@ -75,7 +75,7 @@ def current_text(store: Store, slug: str) -> str:
 
 def target_for(cat: dict, slug: str) -> tuple[str, Optional[dict]]:
     """(the user file an edit of `slug` writes, the deck the edit starts from or None for a new deck)."""
-    if not isinstance(slug, str) or not decks_mod.SLUG_RE.match(slug):
+    if not isinstance(slug, str) or not decks_mod.SLUG_RE.fullmatch(slug):
         raise EditError("a file name is 2 to 40 characters of a-z, 0-9 and '-'")
     decks = cat["decks"]
     deck = decks.get(slug)
@@ -94,7 +94,7 @@ def target_for(cat: dict, slug: str) -> tuple[str, Optional[dict]]:
 
 
 def _next_id(prefix: str, cards: list[dict]) -> str:
-    used = {int(m.group(2)) for c in cards if (m := decks_mod.ID_RE.match(str(c.get("id", ""))))}
+    used = {int(m.group(2)) for c in cards if (m := decks_mod.ID_RE.fullmatch(str(c.get("id", ""))))}
     n = 1
     while n in used:
         n += 1
@@ -257,7 +257,7 @@ def preview(store: Store, slug: str, deck: Optional[dict] = None, changes: Optio
 
 
 def saves_at_once(cat: dict, slug: str) -> bool:
-    """Whether a person's edit of `slug` saves without a preview (D21): it lands in an own deck (an own
+    """Whether a person's edit of `slug` saves without a preview: it lands in an own deck (an own
     copy that already exists included) or makes a new one. False for the first own copy of a shipped or
     community deck and for imported decks."""
     try:
@@ -271,7 +271,7 @@ def saves_at_once(cat: dict, slug: str) -> bool:
 
 def save(store: Store, slug: str, confirm: str, author: str, deck: Optional[dict] = None,
          changes: Optional[dict] = None, replace: bool = False, at_once: bool = False) -> dict:
-    """Save after a preview (`confirm`), or with `at_once` (a person's click, D21) without one where
+    """Save after a preview (`confirm`), or with `at_once` (a person's click) without one where
     `saves_at_once` allows it; a `confirm` that is sent is always checked."""
     if author not in AUTHORS:
         raise EditError("author must be user or agent")
@@ -369,13 +369,13 @@ def _write(store: Store, slug: str, text: str, author: str, summary: str, delete
 
 
 def versions(store: Store, slug: str) -> list[dict]:
-    if not isinstance(slug, str) or not decks_mod.SLUG_RE.match(slug):
+    if not isinstance(slug, str) or not decks_mod.SLUG_RE.fullmatch(slug):
         raise EditError("unknown deck", "unknown_deck")
     return list(reversed(_index(store, slug)))
 
 
 def restore(store: Store, slug: str, n: Any, author: str) -> dict:
-    if not isinstance(slug, str) or not decks_mod.SLUG_RE.match(slug):
+    if not isinstance(slug, str) or not decks_mod.SLUG_RE.fullmatch(slug):
         raise EditError("unknown deck", "unknown_deck")
     try:
         n = int(n)
@@ -453,7 +453,7 @@ def _load_or_none(text: str, slug: str) -> Optional[dict]:
 
 
 def delete(store: Store, slug: str, author: str) -> dict:
-    if not isinstance(slug, str) or not decks_mod.SLUG_RE.match(slug):
+    if not isinstance(slug, str) or not decks_mod.SLUG_RE.fullmatch(slug):
         raise EditError("unknown deck", "unknown_deck")
     with store.lock():
         deck = decks_mod.catalog(store)["decks"].get(slug)
@@ -486,13 +486,15 @@ def import_text(store: Store, text: str, author: str, slug: Optional[str] = None
         raise EditError("the file is not a deck")
     if slug is not None and not isinstance(slug, str):
         raise EditError("the file name must be text")
-    slug = slug or str(doc.get("deck") or "")
+    named = doc.get("deck")
+    slug = slug or (named if isinstance(named, str) else "")
     doc = {**doc, "deck": slug}
-    deck, problems = decks_mod.validate(doc, slug, tags_required=False)
+    deck, problems = decks_mod.validate(doc, slug, tags_required=False, file=True)
     if deck is None:
         raise EditError(rules_message("The deck breaks", problems), "invalid_deck", **decks_mod.problem_fields(problems))
     if slug in decks_mod.SHIPPED:
         raise EditError(f"'{slug}' is the name of a shipped deck; import it under another file name", "exists")
+    dropped = deck.pop("unknown_keys", None)
     with store.lock():
         loaded = slug in decks_mod.catalog(store)["decks"]
         existed = loaded or bool(current_text(store, slug))
@@ -506,7 +508,8 @@ def import_text(store: Store, text: str, author: str, slug: Optional[str] = None
         decks_mod.set_switch(store, slug, source="imported", auto=False)
     return {"ok": True, "deck": slug, "version": n, "cards": len(deck["cards"]), "source": "imported",
             "replaced": existed, "undo": _undo(before, n, slug),
-            "note": "Hermes does not draw from an imported deck until you switch that on; you can draw from it now."}
+            "note": "Hermes does not draw from an imported deck until you switch that on; you can draw from it now."
+                    + (f" Not kept: {', '.join(dropped)[:200]} (keys this version does not know)." if dropped else "")}
 
 
 def export(store: Store, slug: str, path: Optional[str] = None, overwrite: bool = False) -> dict:

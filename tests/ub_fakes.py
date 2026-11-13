@@ -28,6 +28,33 @@ def sub(name: str):
     return importlib.import_module(f"{PKG}.{name}")
 
 
+def hermes_source() -> "pathlib.Path | None":
+    """Hermes' source tree: HERMES_SOURCE, a PYTHONPATH entry holding hermes_cli, the Docker image's
+    /opt/hermes, then the installer's path. None when there is none."""
+    import os
+
+    candidates = [os.environ.get("HERMES_SOURCE", "")]
+    candidates += os.environ.get("PYTHONPATH", "").split(os.pathsep)
+    candidates += ["/opt/hermes", str(pathlib.Path.home() / ".hermes" / "hermes-agent")]
+    for candidate in candidates:
+        if candidate and (pathlib.Path(candidate) / "hermes_cli" / "__init__.py").is_file():
+            return pathlib.Path(candidate)
+    return None
+
+
+def hermes_python(source: "pathlib.Path | None") -> "pathlib.Path | None":
+    """The interpreter that runs Hermes: HERMES_PYTHON, else the source's venv."""
+    import os
+
+    candidates = [os.environ.get("HERMES_PYTHON", "")]
+    if source is not None:
+        candidates += [str(source / ".venv" / "bin" / "python"), str(source / "venv" / "bin" / "python")]
+    for candidate in candidates:
+        if candidate and pathlib.Path(candidate).exists():
+            return pathlib.Path(candidate)
+    return None
+
+
 def make_store(tmp_path):
     return sub("store").Store(tmp_path / "data")
 

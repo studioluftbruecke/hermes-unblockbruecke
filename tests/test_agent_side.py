@@ -1,11 +1,11 @@
-"""M2 'The agent's side' (PLAN-v0.2): the window rule, one card per turn, only `auto` cards from decks
+"""The agent's side: the window rule, one card per turn, only `auto` cards from decks
 whose Hermes switch is on (seeded once from a stored `autodraw_decks`), the matched-tag preference, the
 short payload, journal rows with where the turn ran and the next call's status as a fact.
 
-The four SILENT patterns of `review-v0.2/agent_experience.py` run through the registered hook. Three
-are red on 0.1.0 and 0.1.4 (no card); the fourth ("two failures per turn over five turns") stays silent
-by decision: M0 P1 found no fire that carrying the count across turns adds, so the count stays per turn
-(D17 not supported). Evidence: `experiments/unblockbruecke/v0.2/core/m2_*.out`.
+Four failure patterns that brought no card in 0.1 run through the registered hook. Three now bring
+one; the fourth ("two failures per turn over five turns") stays silent by decision: in recorded
+sessions, carrying the count across turns added no card a per-turn count missed, so the count stays
+per turn.
 """
 import json
 
@@ -20,7 +20,7 @@ READ_OK = json.dumps({"content": "1|hello", "total_lines": 1})
 TIMEOUT = json.dumps({"error": "stamp registry unreachable: upstream timeout after 30 s", "release": "4.2"})
 TEXT_FAIL = "Error: connection refused"
 FAILING = (FAIL, TIMEOUT, TEXT_FAIL)
-REFRAME = {"ag-04", "ag-07", "ag-20"}  # the Agent deck's `reframe` cards (M0 P5's matched pool)
+REFRAME = {"ag-04", "ag-07", "ag-20"}  # the Agent deck's `reframe` cards
 
 
 @pytest.fixture(autouse=True)
@@ -29,14 +29,6 @@ def no_session_markers(monkeypatch):
     for var in ("HERMES_SESSION_SOURCE", "HERMES_SESSION_PLATFORM", "HERMES_KANBAN_TASK", "HERMES_CRON_SESSION",
                 "HERMES_SINGLE_QUERY_SESSION", "HERMES_PLUGIN_HOST_PROCESS"):
         monkeypatch.delenv(var, raising=False)
-
-
-@pytest.fixture(autouse=True)
-def detector():
-    bridge = sub("bridge")
-    bridge.set_detector(lambda tool, result: (isinstance(result, str) and result in FAILING, ""))
-    yield
-    bridge.set_detector(None)
 
 
 def ctx_with(tmp_path, surface="desktop", **settings):
@@ -59,7 +51,7 @@ def store_of(ctx):
     return load_plugin().make_store(ctx)
 
 
-# --- the four SILENT patterns (AX-1) -------------------------------------------------------------------
+# --- the four SILENT patterns -------------------------------------------------------------------
 
 def test_fix_rerun_fail_gets_a_card(tmp_path):
     """An edit lands between each failing test run, six rounds: 0.1 gave no card."""
@@ -81,7 +73,7 @@ def test_two_failures_one_good_call_gets_a_card(tmp_path):
 
 def test_two_failures_per_turn_stay_silent_by_decision(tmp_path):
     """The person says 'still broken' five times, two failures each turn: the count stays per turn
-    (M0 P1, D17 not supported), so no card. Green on 0.1 too; this pins the decision."""
+    so no card. Green on 0.1 too; this pins the decision."""
     ctx = ctx_with(tmp_path)
     assert sum(cards(run(ctx, f"turn-{n}", [("terminal", FAIL)] * 2)) for n in range(5)) == 0
 
@@ -100,7 +92,7 @@ def test_threshold_sets_the_count_and_the_window(tmp_path):
     assert [o is not None for o in six].index(True) == 6  # 6 of the last 8
 
 
-# --- one card per turn (AX-8) ------------------------------------------------------------------------
+# --- one card per turn ------------------------------------------------------------------------
 
 def test_one_card_per_turn_whatever_the_old_setting_says(tmp_path):
     ctx = ctx_with(tmp_path, autodraw_per_turn=3)
@@ -116,7 +108,7 @@ def test_settings_have_no_per_turn_and_no_deck_list():
     assert st.SETTABLE == ("autodraw", "autodraw_threshold", "card_of_day", "learning", "show_in_statusbar")
 
 
-# --- only `auto` cards from decks whose Hermes switch is on (AX-6) ------------------------------------
+# --- only `auto` cards from decks whose Hermes switch is on ------------------------------------
 
 def test_only_auto_cards_from_hermes_decks(tmp_path):
     ctx = ctx_with(tmp_path)
@@ -201,7 +193,7 @@ def test_seed_follows_an_own_copy_and_new_decks_take_the_defaults(tmp_path):
     assert switches(store)["later"] is False  # a deck made after the seed: Hermes off by default
 
 
-# --- the matched-tag preference (AX-3, M0 P5) ----------------------------------------------------------
+# --- the matched-tag preference ----------------------------------------------------------
 
 def test_an_unreachable_upstream_brings_a_reframe_card(tmp_path):
     for n in range(12):
@@ -251,7 +243,7 @@ def test_failure_kind_reads_the_error_text_only_for_the_pick():
     assert ad.failure_kind(None) == ("", ())
 
 
-# --- the short payload (AX-7) ---------------------------------------------------------------------------
+# --- the short payload ---------------------------------------------------------------------------
 
 def test_the_payload_is_the_card_one_sentence_and_the_draw_id(tmp_path):
     ctx = ctx_with(tmp_path)
@@ -268,7 +260,7 @@ def test_the_payload_is_the_card_one_sentence_and_the_draw_id(tmp_path):
     assert "this call still failed. A nudge, not an order. draw_id " in line
 
 
-# --- journal rows: where the turn ran, the next call as a fact (AX-2, AX-4) ----------------------------
+# --- journal rows: where the turn ran, the next call as a fact ----------------------------
 
 @pytest.mark.parametrize("surface,where,label", [("desktop", "desktop", "Desktop chat"), ("cli", "cli", "CLI"),
                                                  ("telegram", "messaging", "Telegram chat"), ("", "unknown", "Unknown")])
@@ -307,13 +299,13 @@ def test_where_reads_cron_kanban_subagent_first(monkeypatch):
             return self.cron
 
     assert bridge.where(Ctx(cron=object())) == ("cron", "")
-    monkeypatch.setattr(bridge, "_policy_source", lambda: "kanban")
+    monkeypatch.setenv("HERMES_SESSION_SOURCE", "kanban")
     assert bridge.where(Ctx(surface="cli")) == ("kanban", "")
-    monkeypatch.setattr(bridge, "_policy_source", lambda: "subagent")
+    monkeypatch.setenv("HERMES_SESSION_SOURCE", "subagent")
     assert bridge.where(Ctx()) == ("subagent", "")
-    monkeypatch.setattr(bridge, "_policy_source", lambda: "oneshot")
+    monkeypatch.setenv("HERMES_SESSION_SOURCE", "oneshot")
     assert bridge.where(Ctx(surface="")) == ("cli", "")
-    monkeypatch.setattr(bridge, "_policy_source", lambda: "")
+    monkeypatch.delenv("HERMES_SESSION_SOURCE")
     assert bridge.where(Ctx(surface="api_server")) == ("api", "")
     assert bridge.where(Ctx(surface="acp")) == ("editor", "")
 

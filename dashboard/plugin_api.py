@@ -1,7 +1,6 @@
 """Backend routes for the Unblockbrücke Desktop half, mounted at `/api/plugins/unblockbruecke/`.
 
-Shapes: `experiments/unblockbruecke/v0.1-contract.md` §5 in the monorepo; the logic is `api.py`
-(tested without FastAPI). Hermes loads this file as a standalone module, so the plugin folder is
+The logic and the answer shapes live in `api.py` (tested without FastAPI). Hermes loads this file as a standalone module, so the plugin folder is
 loaded as a package by path. The data folder and the settings are read per call from the bound
 Hermes home.
 """

@@ -1,8 +1,7 @@
-"""M4 'Decks, lighter' (PLAN-v0.2, D21), the engine: a person's edit of an own deck saves at once with one
+"""Lighter deck edits, the engine: a person's edit of an own deck saves at once with one
 request and is undone with one; tags are optional in the user's decks and still required in shipped and
 community deck files (`scripts/check_deck.py`). Red on 0.1.0 and 0.1.4: a save without `confirm` was a
 409 `stale_preview`, and a card without tags was refused everywhere.
-Evidence: `experiments/unblockbruecke/v0.2/core/m4_*.out`.
 """
 import importlib.util
 

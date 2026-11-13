@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.2.1
+
+A review round on security and correctness before the catalog's next review. Update both halves: the plugin where Hermes runs and the one Hermes Desktop loads.
+
+- A small deck file built from YAML aliases is refused at once instead of hanging the import.
+- Deck names, card ids, tags and op ids with a trailing line break are refused.
+- Card text rules also refuse short links (`bit.ly/x`), `javascript:`, `mailto:`, `file:` and `data:`
+  addresses, one-line programs (`python3 -c`) and @mentions. Ordinary sentences such as "Look at the
+  data: what changed?" still pass, so a deck saved before the update keeps loading.
+- A deck file with a key the plugin does not know still loads; the deck list, the page and an import
+  name that key and say that a save does not keep it.
+- Auto-draw counts a failed call from the status Hermes passes to the hook, except where Hermes' own
+  loop does not count it either (a repeat its guardrail refused, a terminal command that exited 0).
+- Saving a setting on the page runs `hermes config set` in a short child process. Hermes' refusals
+  still hold there (a managed install, a key an administrator pinned) and answer "not allowed".
+- When this Hermes version cannot say whether a person is present, deck writes are refused with one
+  sentence that says so, also inside the plugin host.
+- The line naming a drawn card is no longer added to replies of scheduled jobs, webhooks, the API
+  server or single-query runs.
+- The page's tabs switch through Desktop's own navigation.
+- Unknown deck names are cut short in error messages.
+- README: install from the catalog first, which edits the agent can make in one turn, that the
+  agent's import reads any path, which failed calls auto-draw never sees, and that another plugin
+  rewriting replies competes with the card line.
+
 ## 0.2.0
 
 - One page with three tabs: **Draw** for you, **Hermes** for your agent, **Decks** for the library

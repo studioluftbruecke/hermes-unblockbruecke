@@ -2,7 +2,7 @@
 
 `register(ctx)` adds the agent tools in `REGISTERED`, the `/card` command, the
 `transform_tool_result` hook for auto-draw (off by default), the `transform_llm_output` hook that names
-an auto-drawn card under the reply (D18 (b)) and the bundled skill. State lives in
+an auto-drawn card under the reply and the bundled skill. State lives in
 `ctx.state.data_dir`; the dashboard routes (`dashboard/plugin_api.py`) compute the same folder per
 call. Sibling modules load lazily: pytest imports this file on its own, and the package name differs
 between Hermes, the dashboard and the tests.
@@ -112,18 +112,28 @@ def register(ctx) -> None:
         hook = _mod("autodraw").AutoDraw(lambda: store, read_settings, lambda: bridge.unattended_reason(ctx),
                                          autodraw_on=autodraw_reader(ctx), where=lambda: bridge.where(ctx))
         ctx.register_hook("transform_tool_result", hook)
-        ctx.register_hook("transform_llm_output", reply_line(hook))
+        ctx.register_hook("transform_llm_output", reply_line(hook, lambda: bridge.unattended_reason(ctx)))
     _register_skill(ctx)
 
 
-def reply_line(autodraw_hook):
-    """D18 (b), M0 P3: on a turn where auto-draw attached a card, one line after the reply, added without
-    the model and without holding the stream: the card directive on Desktop (the page's renderer shows
-    the card), a plain line elsewhere. Every other turn: None (no change). Fail-open."""
+def reply_line(autodraw_hook, unattended=lambda: None):
+    """On a turn where auto-draw attached a card, one line after the reply, added without the model and
+    without holding the stream: the card directive on Desktop (the page's renderer shows the card), a
+    plain line elsewhere. Every other turn: None (no change). Fail-open.
+
+    Hermes keeps only the first string any `transform_llm_output` hook returns, so on a carded turn either
+    this line or another plugin's rewrite of the reply is lost, by load order. The line is therefore added
+    only where a person reads the reply: never in a scheduled job, a webhook, the API server or a
+    single-query run. When Hermes cannot say whether a person is there, the line stays."""
+    bridge = _mod("bridge")
+
     def on_output(response_text: Any = "", platform: str = "", turn_id: str = "", **_kw: Any):
         try:
             card = autodraw_hook.card_for_turn(turn_id)
             if card is None or not isinstance(response_text, str) or not response_text.strip():
+                return None
+            reason = unattended()
+            if reason and reason != bridge.NO_SIGNAL:
                 return None
             if str(platform or "").lower() == "desktop":
                 line = f'::card{{deck="{card["deck"]}" id="{card["id"]}"}}'
