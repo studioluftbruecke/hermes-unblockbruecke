@@ -1,7 +1,7 @@
 """`/card [deck|agent]` in every chat surface (F4).
 
 `/card` draws a human card from the decks switched on, `/card coding` from one deck, `/card agent`
-from Agent unblock with both faces. Plain text only, so it reads the same on every surface; the
+from the Agent deck with both faces. Plain text only, so it reads the same on every surface; the
 Desktop renders `::card{...}` lines the agent writes, not this command's text.
 """
 from __future__ import annotations
@@ -11,7 +11,7 @@ from typing import Any, Callable
 from . import decks as decks_mod, draw as draw_mod, service
 
 HELP = ("/card draws a card. /card <deck> draws from one deck (for example /card coding), /card agent shows "
-        "an Agent unblock card with both faces, /card decks lists the decks.")
+        "an Agent card with both faces, /card decks lists the decks.")
 
 
 def render(card: dict, both: bool = False) -> str:

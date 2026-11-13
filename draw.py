@@ -41,10 +41,8 @@ def candidates(decks: list[dict], context: str = "any", tags: Optional[list] = N
             if unattended and "human" in ctags:
                 continue  # constraint 6: no card that asks a person when nobody is there
             out.append((deck, card))
-    if context == "auto":
-        written_for_it = [(d, c) for d, c in out if "auto" in (c.get("tags") or [])]
-        if written_for_it:
-            out = written_for_it
+    if context == "auto":  # 0.2 (AX-6): only cards written for Hermes, never a person's card as a fallback
+        out = [(d, c) for d, c in out if "auto" in (c.get("tags") or [])]
     return out
 
 
@@ -53,16 +51,24 @@ def key(deck: dict, card: dict) -> str:
 
 
 def draw(decks: list[dict], context: str = "any", tags: Optional[list] = None, unattended: bool = False,
-         recent: Optional[dict] = None, weights: Optional[dict] = None, rng: Any = None) -> dict:
+         recent: Optional[dict] = None, weights: Optional[dict] = None, rng: Any = None,
+         prefer: Optional[list] = None) -> dict:
     """One card: {"deck": <deck>, "card": <card>, "face": "human"|"agent"}.
 
     `recent` maps a deck slug to its recently drawn card ids, newest first; `weights` maps
-    "deck/id" to a positive weight."""
+    "deck/id" to a positive weight. `prefer` names tags that fit the moment (auto-draw: the kind of
+    failure, M0 P5): when a card carries one, the pick is among those, before the repeat rule. A
+    matched pool is small (three `reframe` cards in the Agent deck), so there the repeat rule leaves
+    out at most all but one of them: the match wins over variety (the 0.2 live box found three quick
+    matched draws in a row pushing the fourth off the match)."""
     if context not in CONTEXTS:
         raise ValueError(f"context must be one of {', '.join(CONTEXTS)}")
     pool = candidates(decks, context, tags, unattended)
     if not pool:
         raise NoCard("no card fits: the decks are switched off, empty, or no card has those tags")
+    wanted = {t for t in (prefer or []) if isinstance(t, str)}
+    matched = [(d, c) for d, c in pool if wanted & set(c.get("tags") or [])] if wanted else []
+    pool = matched or pool
     recent = recent or {}
     sizes = Counter(id(d) for d, _ in pool)  # once per draw: counting per card made a draw quadratic
     skips: dict[int, set] = {}
@@ -70,8 +76,10 @@ def draw(decks: list[dict], context: str = "any", tags: Optional[list] = None, u
     for deck, card in pool:
         skip = skips.get(id(deck))
         if skip is None:
-            skip = skips[id(deck)] = set(list(recent.get(deck["deck"]) or [])[:NO_REPEAT])
-        if sizes[id(deck)] > NO_REPEAT and card["id"] in skip:
+            size = sizes[id(deck)]
+            keep_out = NO_REPEAT if size > NO_REPEAT else (size - 1 if matched else 0)
+            skip = skips[id(deck)] = set(list(recent.get(deck["deck"]) or [])[:keep_out])
+        if card["id"] in skip:
             continue
         fresh.append((deck, card))
     pool = fresh or pool

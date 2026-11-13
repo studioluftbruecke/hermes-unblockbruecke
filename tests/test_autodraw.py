@@ -1,5 +1,6 @@
 """M3: auto-draw. Attach on real result shapes, Hermes' own failure verdict before and after the card,
-the streak, once per turn, concurrency, the LRU, unattended, fail-open, settings, timing.
+the window (0.2: N failed of the last N + 2 calls), once per turn, concurrency, the LRU, unattended,
+fail-open, settings, timing.
 
 The tests marked `hermes` run Hermes' real `agent.display._detect_tool_failure`; they are skipped
 where Hermes is not importable (plain `check.sh`) and run by
@@ -57,7 +58,8 @@ def test_attach_json_object_adds_one_key_and_keeps_the_rest():
     out = ad.attach(TERMINAL_FAIL, card(), 3)
     data = json.loads(out)
     assert data["exit_code"] == 1 and data["error"] == "Command failed with exit code 1"
-    assert data["unblockbruecke_card"]["id"] == "ag-03" and "not an order" in data["unblockbruecke_card"]["why"]
+    assert data["unblockbruecke_card"] == {"card": card()["agent"], "note": ad.note(3, 3)}
+    assert "not an order" in data["unblockbruecke_card"]["note"]
     assert {k: v for k, v in data.items() if k != "unblockbruecke_card"} == json.loads(TERMINAL_FAIL)
 
 
@@ -65,7 +67,7 @@ def test_attach_plain_text_appends_one_line():
     ad = sub("autodraw")
     out = ad.attach(PLAIN_FAIL, card(), 3)
     assert out.startswith(PLAIN_FAIL) and out.count("\n") == 2
-    assert out.endswith("(A lateral prompt, not an order.)") and "[unblockbruecke] 3 failed calls" in out
+    assert out.endswith("A nudge, not an order.)") and f"[unblockbruecke] {card()['agent']} (3 of your last 5" in out
 
 
 @pytest.mark.parametrize("shape", [None, {"error": "x"}, "[1, 2]", "{not json", json.dumps({"unblockbruecke_card": 1})])
@@ -148,20 +150,21 @@ def test_third_failure_carries_one_card_and_the_turn_stays_quiet(tmp_path, stand
     assert out[0] is None and out[1] is None and out[2] is not None
     assert out[3:] == [None, None, None]  # once per turn
     card_ = json.loads(out[2])["unblockbruecke_card"]
-    assert card_["deck"] == "agent-unblock" and card_["id"].startswith("ag-")
     rows = sub("journal").draws(store)
+    assert card_["draw_id"] == rows[0]["draw_id"] and rows[0]["deck"] == "agent-unblock" and rows[0]["card"].startswith("ag-")
     assert len(rows) == 1 and rows[0]["by"] == "auto" and rows[0]["streak"] == 3 and rows[0]["attached"] is True
     assert rows[0]["tool"] == "terminal" and rows[0]["turn_id"] == "t1"
     assert "args" not in rows[0]
     assert fail_calls(hook, 3, turn="t2")[2] is not None  # a new turn has its own budget
 
 
-def test_success_resets_the_streak_and_outcomes_are_recorded(tmp_path, stand_in_detector):
+def test_a_success_no_longer_resets_and_outcomes_are_recorded(tmp_path, stand_in_detector):
+    """0.2 (D16): 3 failed among the last 5 calls; a success between failures does not start over."""
     hook, store = hook_for(tmp_path, {"autodraw": True})
     fail_calls(hook, 2)
     assert hook(tool_name="read_file", result=OK_RESULT, status="ok", turn_id="t1") is None
-    out = fail_calls(hook, 3)
-    assert out[2] is not None  # a fresh streak of three after the reset
+    out = fail_calls(hook, 1)
+    assert out[0] is not None  # F F ok F: 3 of the last 4
     fail_calls(hook, 1)
     hook(tool_name="read_file", result=OK_RESULT, status="ok", turn_id="t1")
     row = sub("journal").draws(store)[0]
@@ -181,13 +184,13 @@ def test_refusals_never_build_a_streak(tmp_path, stand_in_detector):
     assert fail_calls(hook, 5, tool="read_file", result=GUARDRAIL_REFUSAL) == [None] * 5
 
 
-def test_threshold_and_per_turn_settings_are_clamped(tmp_path, stand_in_detector):
+def test_threshold_is_clamped_and_one_card_per_turn(tmp_path, stand_in_detector):
     hook, _ = hook_for(tmp_path, {"autodraw": True, "autodraw_threshold": 2, "autodraw_per_turn": 2})
     out = fail_calls(hook, 6)
-    assert [o is not None for o in out] == [False, True, False, True, False, False]
-    hook2, _ = hook_for(tmp_path, {"autodraw": True, "autodraw_threshold": 99, "autodraw_per_turn": 0})
+    assert [o is not None for o in out] == [False, True, False, False, False, False]  # 0.2: one per turn
+    hook2, _ = hook_for(tmp_path, {"autodraw": True, "autodraw_threshold": 99})
     out2 = fail_calls(hook2, 7, turn="x")
-    assert [o is not None for o in out2].index(True) == 5  # clamped to 6; per turn clamped to 1
+    assert [o is not None for o in out2].index(True) == 5  # clamped to 6
     assert sum(o is not None for o in out2) == 1
 
 
@@ -214,31 +217,38 @@ def test_lru_keeps_512_turns():
     ad = sub("autodraw")
     tr = ad.Tracker(size=512)
     for i in range(600):
-        tr.step(f"t{i}", True, 3, 1)
+        tr.step(f"t{i}", True, 3)
     assert len(tr.turns) == 512 and "t0" not in tr.turns and "t599" in tr.turns
 
 
 def test_unattended_skips_human_cards_and_logs_skipped(tmp_path, stand_in_detector, monkeypatch):
+    from ub_fakes import card as make_card, deck_doc, write_user_deck
+
     decks = sub("decks")
-    store = make_store(tmp_path)
-    # Only the human-tagged cards of Agent unblock are left on: a deck of them, as the plan's box sets up.
-    hook, store = hook_for(tmp_path, {"autodraw": True, "autodraw_decks": ["human-unblock"]},
-                           unattended=lambda: "a single-query run (hermes chat -q or -z)")
+    # Only cards that ask a person are left for Hermes: a deck of `auto` + `human` cards, the Agent deck off.
+    hook, store = hook_for(tmp_path, {"autodraw": True}, unattended=lambda: "a single-query run (hermes chat -q or -z)")
+    write_user_deck(store, deck_doc("ask", prefix="as", cards=[make_card(n, "as", tags=["auto", "human"]) for n in (1, 2)]))
+    sub("service").ensure_seed(store, {})
+    decks.set_switch(store, "agent-unblock", auto=False)
+    decks.set_switch(store, "ask", auto=True)
     out = fail_calls(hook, 3)
     assert out == [None, None, None]
     rows, _ = store.read_jsonl("journal", "2026-11.jsonl")
     assert rows[-1]["kind"] == "skipped" and rows[-1]["reason"] == "unattended"
-    attended, _ = hook_for(tmp_path, {"autodraw": True, "autodraw_decks": ["human-unblock"]})
+    attended, _ = hook_for(tmp_path, {"autodraw": True})
     assert fail_calls(attended, 3, turn="t9")[2] is not None
-    assert decks.SHIPPED["human-unblock"]["cards"][0]["tags"]  # sanity: the deck exists
 
 
 def test_imported_decks_are_off_for_auto_draw(tmp_path, stand_in_detector):
     from ub_fakes import deck_doc, write_user_deck
 
-    hook, store = hook_for(tmp_path, {"autodraw": True, "autodraw_decks": ["bought"]})
-    write_user_deck(store, deck_doc("bought", prefix="bo"))
+    from ub_fakes import card as make_card
+
+    hook, store = hook_for(tmp_path, {"autodraw": True})
+    write_user_deck(store, deck_doc("bought", prefix="bo", cards=[make_card(n, "bo", tags=["auto"]) for n in (1, 2)]))
     sub("decks").set_switch(store, "bought", source="imported")
+    sub("service").ensure_seed(store, {})
+    sub("decks").set_switch(store, "agent-unblock", auto=False)
     assert fail_calls(hook, 3) == [None, None, None]
     sub("decks").set_switch(store, "bought", auto=True)
     assert fail_calls(hook, 3, turn="t2")[2] is not None
@@ -291,7 +301,7 @@ def test_defaults_match_plugin_yaml():
 
     schema = YAML(typ="safe").load(text)["config_schema"]
     assert set(schema) == set(settings.DEFAULTS) - settings.RETIRED
-    assert settings.RETIRED == {"show_in_sidebar"} and not settings.RETIRED & set(schema)
+    assert settings.RETIRED == {"show_in_sidebar", "autodraw_decks"} and not settings.RETIRED & set(schema)
     for key, spec in schema.items():
         assert spec["default"] == settings.DEFAULTS[key], key
     assert settings.read(lambda k, d=None: None) == settings.DEFAULTS

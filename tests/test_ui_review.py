@@ -39,7 +39,7 @@ export function atom(value) {
 }
 export const useValue = a => (a && a.get ? a.get() : null)
 export const host = {
-  state: { profile: atom('test'), focusedSessionProfile: atom(null), focusedStoredSessionId: atom(null), focusedSessionId: atom(null) },
+  state: { profile: atom('test'), focusedSessionProfile: atom(null), focusedStoredSessionId: atom(null), focusedSessionId: atom(null), busy: atom(false) },
   navigate: path => globalThis.__calls.push(['navigate', path]),
   notify: p => globalThis.__toasts.push(p.message),
   composer: { setDraft: async () => true, getDraft: async () => '' },
@@ -271,7 +271,7 @@ def test_server_errors_read_as_a_sentence_not_the_raw_answer(tmp_path):
         import { restError, setCtx } from '@src/core.js'
         import { drawCard } from '@src/state.js'
         import { CardsPage } from '@src/page.js'
-        import { JournalView } from '@src/journal.js'
+        import { HermesView } from '@src/hermes.js'
         import { jsx } from 'react/jsx-runtime'
         import { fakeCtx, setAnswer, mount, text, queryClient } from './helpers.js'
         import { K } from './data.js'
@@ -290,8 +290,8 @@ def test_server_errors_read_as_a_sentence_not_the_raw_answer(tmp_path):
         const raw = restError(new Error('500: Internal Server Error'))
         queryClient.setQueryData(K('decks'), raw)
         const page = text(mount(jsx(CardsPage, {})).tree)
-        queryClient.setQueryData(K('journal', 'all', 50), raw)
-        const journal = text(mount(jsx(JournalView, {})).tree)
+        queryClient.setQueryData(K('journal', 'hermes', 8), raw)
+        const journal = text(mount(jsx(HermesView, { decksData: { decks: [] } })).tree)
         console.log(JSON.stringify({ msgs, toasts: globalThis.__toasts, page, journal }))
     """)
     m = out["msgs"]
@@ -302,7 +302,7 @@ def test_server_errors_read_as_a_sentence_not_the_raw_answer(tmp_path):
     assert m["internal500"].startswith("the plugin hit an unexpected error")
     assert out["toasts"] and out["toasts"][-1].startswith("Could not draw: ") and "Internal Server Error" not in out["toasts"][-1]
     assert "The decks did not load: " in out["page"] and "Internal Server Error" not in out["page"]
-    assert "The journal did not load: " in out["journal"] and "Internal Server Error" not in out["journal"]
+    assert "The list did not load: " in out["journal"] and "Internal Server Error" not in out["journal"]
 
 
 # ---- UI-20, UI-23, UI-24: copy ----------------------------------------------------------------------
@@ -339,15 +339,17 @@ def test_no_visible_string_over_160_characters_and_deck_names_not_slugs(tmp_path
     """)
     assert out["long"] == []
     for view in ("off", "on", "settings"):
-        assert "agent-unblock" not in out[view].replace("Auto-draw from Agent unblock", ""), out[view]
+        assert "agent-unblock" not in out[view], out[view]
+    for view in ("off", "on"):
         assert "Agent unblock" in out[view]
-    assert "Coding" in out["settings"]
+    # 0.2: the settings page is a pointer (Open Unblockbrücke, the Sidebar section, the update note).
+    assert "Open Unblockbrücke" in out["settings"] and "Coding" not in out["settings"]
 
 
-def test_card_of_the_day_is_one_today_line_in_the_popover_and_the_own_license_badge_is_gone(tmp_path):
-    """UI-23, rewritten for 0.1.3 (A19): the card of the day is one line "Today: <card line>" in the
-    Draw popover before a draw, shown only while card_of_day is on; clicking it shows that card. The
-    button itself never names the card or a date.
+def test_card_of_the_day_is_on_the_chip_and_in_its_popover_and_the_own_license_badge_is_gone(tmp_path):
+    """0.2 (sketch A): the chip carries the card of the day, its icon and the card's line; its popover
+    holds that card, "Pass it to Hermes", "Another" and the page link. With card_of_day off the chip says
+    Draw and the popover offers the card back and Draw.
     UI-24: an own deck's header shows "yours" once, not the license id "own" beside it."""
     out = run_js(tmp_path, """
         import { Chip } from '@src/chip.js'
@@ -358,49 +360,48 @@ def test_card_of_the_day_is_one_today_line_in_the_popover_and_the_own_license_ba
         queryClient.setQueryData(K('decks'), DECKS)
         queryClient.setQueryData(K('today'), { ok: true, schema: 1, enabled: true, date: '2026-03-02', card: CARD })
         const { $popOpen } = await import('@src/state.js')
-        const closed = text(mount(jsx(Chip, {})).tree)
+        const chipOf = t => all(t, n => n.props['data-ubk'] === 'chip')[0]
+        const closed = text(chipOf(mount(jsx(Chip, {})).tree))
         $popOpen.set(true)
         const view = mount(jsx(Chip, {}))
-        const today = all(view.tree, n => n.props['data-ubk'] === 'today')
-        const on = text(today)
-        today[0].props.onClick()
-        const shown = all(view.render(), n => n.props['data-ubk'] === 'popover')[0]
+        const pop = all(view.tree, n => n.props['data-ubk'] === 'popover')[0]
+        const labels = all(pop, n => n.type === 'button').map(text)
         queryClient.setQueryData(K('today'), { ok: true, schema: 1, enabled: false, date: '2026-03-02', card: null })
-        $popOpen.set(false); $popOpen.set(true)
-        const { $popCard } = await import('@src/state.js')
-        $popCard.set(null)
-        const off = all(mount(jsx(Chip, {})).tree, n => n.props['data-ubk'] === 'today').length
+        const offView = mount(jsx(Chip, {}))
+        const offPop = all(offView.tree, n => n.props['data-ubk'] === 'popover')[0]
+        const off = { chip: text(chipOf(offView.tree)), state: offPop.props['data-state'], labels: all(offPop, n => n.type === 'button').map(text) }
+        $popOpen.set(false)
         const badges = slug => {
           queryClient.setQueryData(K('deck', slug), slug === 'mine' ? MINE : NIGHT)
           const v = mount(jsx(DecksView, { decksData: { ...DECKS, decks: DECKS.decks.filter(d => d.deck === slug) } }))
           return all(v.tree, n => n.type === 'span' && /badge/.test(n.props.className || '')).map(text)
         }
-        console.log(JSON.stringify({ closed, on, state: shown.props['data-state'], card: all(shown, n => n.props['data-card']).map(n => n.props['data-card']),
-          off, mine: badges('mine'), night: badges('night-shift') }))
+        console.log(JSON.stringify({ closed, state: pop.props['data-state'], card: all(pop, n => n.props['data-card']).map(n => n.props['data-card']),
+          words: text(pop).split(/\\s+/).length, labels, off, mine: badges('mine'), night: badges('night-shift') }))
     """)
-    assert out["closed"] == "Draw", out["closed"]
-    assert out["on"] == "Today: Read the error as a stranger.", out["on"]
-    assert out["state"] == "after" and out["card"] == ["coding/co-03"], out
-    assert out["off"] == 0
+    assert out["closed"] == "Read the error as a stranger.", out["closed"]
+    assert out["state"] == "day" and out["card"] == ["coding/co-03"], out
+    assert out["labels"] == ["Pass it to Hermes", "Another", "Open Unblockbrücke"], out["labels"]
+    assert out["off"] == {"chip": "Draw", "state": "empty", "labels": ["Draw", "Open Unblockbrücke"]}, out["off"]
     assert "own" not in out["mine"] and "yours" in out["mine"], out["mine"]
     assert "CC0-1.0" in out["night"] and "imported" in out["night"]
 
 
 # ---- UI-18, P3: a dot for the card Hermes drew in this chat --------------------------------------------
 
-def test_hermes_drew_dot_clears_on_open_and_when_another_chat_gets_focus(tmp_path):
-    """UI-18 for 0.1.3 (P3): an auto-draw in the focused chat puts a dot on the Draw icon and changes the
-    tooltip; opening the popover shows that card and clears the dot; a focus change clears it too. The
-    button text stays "Draw" throughout."""
+def test_hermes_drew_dot_clears_on_open_on_the_next_turn_and_when_another_chat_gets_focus(tmp_path):
+    """0.2: a draw by Hermes in the focused chat puts a dot on the chip and the card's line on it; opening
+    the popover shows that card with Helped and Not this time and clears the dot; the next turn and a
+    focus change clear it too. With "Hermes draws when stuck" off the chip asks nothing (HX-15)."""
     out = run_js(tmp_path, """
         import { Chip } from '@src/chip.js'
         import { jsx } from 'react/jsx-runtime'
         import { mount, text, all, host, queryClient } from './helpers.js'
         import { CARD, DECKS, K } from './data.js'
-        import { $popOpen } from '@src/state.js'
         const auto = (draws) => ({ ok: true, schema: 1, draws, totals: {}, learning: true })
-        const drew = { draw_id: 'd-9', card: 'ag-16', deck: 'agent-unblock', at: new Date().toISOString(), view: { ...CARD, id: 'ag-16', deck: 'agent-unblock', deck_name: 'Agent unblock' } }
+        const drew = { draw_id: 'd-9', card: 'ag-16', deck: 'agent-unblock', streak: 3, at: new Date().toISOString(), view: { ...CARD, id: 'ag-16', deck: 'agent-unblock', deck_name: 'Agent' } }
         queryClient.setQueryData(K('decks'), DECKS)
+        queryClient.setQueryData(K('settings'), { ok: true, schema: 1, settings: { autodraw: false } })
         const chipOf = tree => all(tree, n => n.props['data-ubk'] === 'chip')[0]
         const dot = tree => all(tree, n => n.props['data-ubk'] === 'dot').length
         const look = tree => ({ dot: dot(tree), text: text(chipOf(tree)), title: chipOf(tree).props.title })
@@ -408,6 +409,12 @@ def test_hermes_drew_dot_clears_on_open_and_when_another_chat_gets_focus(tmp_pat
         queryClient.setQueryData(K('journal', 'auto', 'chat-a'), auto([]))
         const view = mount(jsx(Chip, {}))
         const res = { before: look(view.render()) }
+        queryClient.setQueryData(K('journal', 'auto', 'chat-a'), auto([drew]))
+        res.featureOff = look(view.render())
+        queryClient.setQueryData(K('settings'), { ok: true, schema: 1, settings: { autodraw: true } })
+        queryClient.setQueryData(K('journal', 'auto', 'chat-a'), auto([]))
+        view.render()
+        host.state.busy.set(true)
         queryClient.setQueryData(K('journal', 'auto', 'chat-a'), auto([drew]))
         res.live = look(view.render())
         all(view.tree, n => n.type === 'Popover')[0].props.onOpenChange(true)
@@ -418,17 +425,26 @@ def test_hermes_drew_dot_clears_on_open_and_when_another_chat_gets_focus(tmp_pat
         res.closed = look(view.render())
         queryClient.setQueryData(K('journal', 'auto', 'chat-a'), auto([{ ...drew, draw_id: 'd-10' }, drew]))
         res.again = look(view.render())
+        host.state.busy.set(false); res.turnEnds = look(view.render())
+        host.state.busy.set(true); res.nextTurn = look(view.render())
+        queryClient.setQueryData(K('journal', 'auto', 'chat-a'), auto([{ ...drew, draw_id: 'd-11' }]))
+        res.third = look(view.render())
         host.state.focusedStoredSessionId.set('chat-b')
         queryClient.setQueryData(K('journal', 'auto', 'chat-b'), auto([]))
         res.other = look(view.render())
         console.log(JSON.stringify(res))
     """)
     assert out["before"] == {"dot": 0, "text": "Draw", "title": "Draw a card"}, out
-    assert out["live"] == {"dot": 1, "text": "Draw", "title": "Hermes drew a card in this chat"}, out
+    assert out["featureOff"] == out["before"], out
+    line = "Read the error as a stranger."
+    assert out["live"] == {"dot": 1, "text": line, "title": f"Hermes drew a card: {line}"}, out
     assert out["opened"]["dot"] == 0 and out["opened"]["state"] == "hermes", out["opened"]
-    assert out["opened"]["card"] == ["agent-unblock/ag-16"] and "Hermes drew this in this chat" in out["opened"]["text"], out["opened"]
+    assert out["opened"]["card"] == ["agent-unblock/ag-16"] and "Hermes drew this after 3 failed calls." in out["opened"]["text"], out["opened"]
+    assert "Helped" in out["opened"]["text"] and "Not this time" in out["opened"]["text"]
     assert out["closed"]["dot"] == 0, out
-    assert out["again"]["dot"] == 1, out
+    assert out["again"]["dot"] == 1 and out["turnEnds"]["dot"] == 1, out
+    assert out["nextTurn"]["dot"] == 0, out
+    assert out["third"]["dot"] == 1, out
     assert out["other"]["dot"] == 0 and out["other"]["text"] == "Draw", out
 
 
@@ -437,17 +453,17 @@ CARD_HUMAN = "Read the error as a stranger."
 
 # ---- UI-22: the shortcut draws from the deck this profile last used ------------------------------------
 
-def test_shortcut_uses_the_profile_deck_choice_and_falls_back_quietly(tmp_path):
-    """UI-22 for 0.1.3 (P1, A22): the page, the popover and mod+alt+u share one key per profile,
-    `deck:<profile>`. A deck picked on the page is the shortcut's deck in that profile and not in
-    another; a deck switched off or gone falls to the profile match (`coding` -> Coding) without a
-    toast, and is forgotten (`deck:<profile>` reads '' afterwards). Deleting a deck clears the key."""
+def test_shortcut_draws_from_the_pressed_chip_of_this_profile(tmp_path):
+    """0.2 (his chip rules): the Draw tab, the chip's Another and mod+alt+u share the pressed chip, one
+    key per profile (`pressed:<profile>`). A chip pressed on the page is the shortcut's deck in that
+    profile and not in another; a profile with no choice starts on Human, else All (no deck sent); a deck
+    switched off or gone falls back the same way without a toast. Deleting the pressed deck clears it."""
     out = run_js(tmp_path, """
         import plugin from '@src/index.js'
         import { DecksView } from '@src/decks.js'
-        import { TableView } from '@src/table.js'
+        import { DrawView } from '@src/draw.js'
         import { jsx } from 'react/jsx-runtime'
-        import { fakeCtx, setAnswer, rests, mount, all, button, host, queryClient } from './helpers.js'
+        import { fakeCtx, setAnswer, rests, mount, all, text, button, host, queryClient } from './helpers.js'
         import { DECKS, MINE, SETTINGS, CARD, K } from './data.js'
         const decks = { ...DECKS, decks: DECKS.decks.map(d => (d.deck === 'writing' ? { ...d, switch: { draw: false, auto: false } } : d)) }
         setAnswer((m, p) => {
@@ -469,32 +485,37 @@ def test_shortcut_uses_the_profile_deck_choice_and_falls_back_quietly(tmp_path):
         }
         const res = {}
         host.state.focusedSessionProfile.set('coding')
-        const table = mount(jsx(TableView, { decks: decks.decks }))
-        button(table.tree, /^Mine/).props.onClick()
-        res.pagePick = { coding: ctx.storage.get('deck:coding', ''), old: ctx.storage.get('deck', null) }
+        const table = mount(jsx(DrawView, { decks: decks.decks }))
+        const chips = t => all(t, n => n.props['data-deck']).map(n => [text(n), !!n.props['aria-pressed']])
+        res.first = chips(table.tree)
+        all(table.tree, n => n.props['data-deck'] === 'mine')[0].props.onClick()
+        res.pagePick = { coding: ctx.storage.get('pressed:coding', ''), chips: chips(table.render()), draws: rests.filter(([m, p]) => p === '/draw').length }
         res.sameProfile = await press()
         host.state.focusedSessionProfile.set('night-shift')
         res.otherProfile = await press()
         host.state.focusedSessionProfile.set('coding')
-        ctx.storage.set('deck:coding', 'writing')
-        res.off = { sent: await press(), kept: ctx.storage.get('deck:coding', null) }
-        ctx.storage.set('deck:coding', 'no-such-deck')
-        res.gone = { sent: await press(), kept: ctx.storage.get('deck:coding', null) }
+        ctx.storage.set('pressed:coding', 'writing')
+        res.off = await press()
+        ctx.storage.set('pressed:coding', 'no-such-deck')
+        res.gone = await press()
         res.toasts = globalThis.__toasts.slice()
-        ctx.storage.set('deck:coding', 'mine')
+        ctx.storage.set('pressed:coding', 'mine')
         queryClient.setQueryData(K('deck', 'mine'), MINE)
         const view = mount(jsx(DecksView, { decksData: { ...DECKS, decks: DECKS.decks.filter(d => d.deck === 'mine') } }))
         button(view.tree, /^Delete deck$/).props.onClick()
         const dialog = all(view.render(), n => n.type === 'ConfirmDialog' && n.props.open)[0]
         await dialog.props.onConfirm()
-        res.afterDelete = ctx.storage.get('deck:coding', null)
+        res.afterDelete = ctx.storage.get('pressed:coding', null)
         console.log(JSON.stringify(res))
     """)
-    assert out["pagePick"] == {"coding": "mine", "old": None}, out
+    # Fixed order: the shipped decks in his order (Agent last of them), then the others by name, then All.
+    order = [["Coding", False], ["Writing", False], ["Agent unblock", False], ["Mine", False], ["Night shift", False], ["All", True]]
+    assert out["first"] == [c for c in order if c[0] != "Writing"], out["first"]
+    assert out["pagePick"]["coding"] == "mine" and out["pagePick"]["draws"] == 0, out
+    assert [c[0] for c in out["pagePick"]["chips"] if c[1]] == ["Mine"], out
     assert out["sameProfile"] == ["mine"], out
-    assert out["otherProfile"] == ["night-shift"], out
-    assert out["off"] == {"sent": ["coding"], "kept": ""}, out
-    assert out["gone"] == {"sent": ["coding"], "kept": ""}, out
+    assert out["otherProfile"] == [None], out
+    assert out["off"] == [None] and out["gone"] == [None], out
     assert out["toasts"] == [], out["toasts"]
     assert out["afterDelete"] == "", out
 
@@ -517,38 +538,40 @@ const posts = () => rests.filter(([m]) => m !== 'GET').map(([m, p, b]) => [m, p,
 """
 
 
-def test_new_deck_refuses_a_taken_name_and_waits_for_a_valid_one(tmp_path):
-    """UI-04: New deck never edits or copies an existing deck: a name or file name already taken is
-    refused with a plain message. UI-15: "Preview the new deck" stays disabled until the name is valid."""
+def test_new_deck_refuses_a_taken_name_and_saves_at_once(tmp_path):
+    """UI-04: New deck never edits or copies an existing deck: a name already taken, or the name of a
+    deck that comes with the plugin, is refused with a plain message. M4 (D21): no file name field, and
+    the new deck saves at once with one PUT and no preview; the Undo bar follows."""
     out = run_js(tmp_path, EDITOR + """
-        setAnswer(() => ({ ok: true, schema: 1, target: 'fresh-deck', summary: '1 card added', cards: 1, confirm: 'c1', diff: {} }))
+        setAnswer((m, p) => (m === 'PUT' ? { ok: true, schema: 1, deck: 'fresh-deck', version: 1, summary: '1 card added', undo: { delete: 'fresh-deck' } } : { ok: true, schema: 1 }))
         button(view.tree, /^New deck$/).props.onClick()
         view.render()
         type('Human face', 'Start with the smallest thing.')
         type('Agent face', 'Write the smallest next step and do only that.')
         const state = () => {
-          const b = button(view.tree, /^Preview the new deck$/)
+          const b = button(view.tree, /^Save the new deck$/)
           return { disabled: !!b.props.disabled, note: text(all(view.tree, n => n.props['data-ubk'] === 'new-deck')) }
         }
-        const res = { empty: state() }
-        type('Deck name', 'Coding'); res.slugTaken = state()
-        type('Deck name', 'coding'); res.lower = state()
-        type('Deck name', 'Night shift two'); type('File name', 'night-shift'); res.fileTaken = state()
-        type('File name', ''); type('Deck name', 'Mine'); res.nameTaken = state()
+        const res = { empty: state(), fileField: all(view.tree, n => n.props['aria-label'] === 'File name').length }
+        type('Deck name', 'Agent unblock'); res.shipped = state()
+        type('Deck name', 'agent UNBLOCK'); res.lower = state()
+        type('Deck name', 'Mine'); res.nameTaken = state()
         type('Deck name', 'Fresh deck'); res.fresh = state()
         const before = posts().length
-        button(view.tree, /^Preview the new deck$/).props.onClick()
+        button(view.tree, /^Save the new deck$/).props.onClick()
         await view.settle()
-        res.sent = posts().slice(before)
+        res.sent = posts().slice(before).map(([m, p, b]) => [m, p, !!b.confirm, b.changes.meta.name])
         res.preview = all(view.tree, n => n.props['data-ubk'] === 'preview').length
+        res.undo = text(all(view.tree, n => n.props['data-ubk'] === 'undo'))
         console.log(JSON.stringify(res))
     """)
-    assert out["empty"]["disabled"] is True
-    for k in ("slugTaken", "lower", "fileTaken", "nameTaken"):
+    assert out["empty"]["disabled"] is True and out["fileField"] == 0
+    for k in ("shipped", "lower", "nameTaken"):
         assert out[k]["disabled"] is True, k
-        assert "taken" in out[k]["note"] or "already" in out[k]["note"], (k, out[k]["note"])
-    assert out["fresh"]["disabled"] is False and "taken" not in out["fresh"]["note"]
-    assert out["sent"][0][0:2] == ["POST", "/decks/fresh-deck/preview"] and out["preview"] == 1
+        assert "comes with the plugin" in out[k]["note"] or "already" in out[k]["note"], (k, out[k]["note"])
+    assert out["fresh"]["disabled"] is False and "already" not in out["fresh"]["note"]
+    assert out["sent"] == [["PUT", "/decks/fresh-deck", False, "Fresh deck"]] and out["preview"] == 0, out
+    assert "Saved" in out["undo"] and "Undo" in out["undo"], out["undo"]
 
 
 def test_replace_mine_asks_first_and_offers_undo(tmp_path):
@@ -612,7 +635,9 @@ def test_problem_lists_show_at_most_fifty_and_say_how_many_more(tmp_path):
 def test_escape_cancels_the_card_editor_the_preview_and_new_deck(tmp_path):
     """UI-13: Escape works as Cancel in the card editor, the preview panel and the New deck form."""
     out = run_js(tmp_path, EDITOR + """
-        setAnswer(() => ({ ok: true, schema: 1, target: 'mine', summary: '1 card removed', cards: 0, confirm: 'c1', diff: {} }))
+        // A backend that still wants a preview (0.1) refuses the save at once; the preview panel opens.
+        setAnswer(m => (m === 'PUT' ? { __status: 409, body: { ok: false, schema: 1, error: 'stale_preview', message: 'Preview first.' } }
+          : { ok: true, schema: 1, target: 'mine', summary: '1 card removed', cards: 0, confirm: 'c1', diff: {} }))
         const count = id => all(view.tree, n => n.props['data-ubk'] === id).length
         const escape = id => { one(all(view.tree, n => n.props['data-ubk'] === id && n.props.onKeyDown), id).props.onKeyDown(ev({ key: 'Escape' })); return view.render() }
         one(all(view.tree, n => n.type === 'button' && n.props.className === 'nm' && text(n) === 'Mine'), 'Mine').props.onClick()
@@ -639,7 +664,7 @@ def test_card_length_counts_characters_as_the_backend_does(tmp_path):
         view.render()
         button(view.tree, /^New card$/).props.onClick(); view.render()
         const look = () => ({ label: text(all(view.tree, n => n.props['data-ubk'] === 'card-editor')[0]).match(/Human face \\(\\d+\\/90\\)/)[0],
-          disabled: !!button(view.tree, /^Preview$/).props.disabled, max: field('Human face').props.maxLength || null })
+          disabled: !!button(view.tree, /^Save$/).props.disabled, max: field('Human face').props.maxLength || null })
         type('Agent face', 'Name the joker in this plan, then remove it.')
         type('Human face', '\\u{1F0CF}'.repeat(46))
         const ok = look()
@@ -655,21 +680,21 @@ def test_card_length_counts_characters_as_the_backend_does(tmp_path):
 # ---- UI-11, UI-10: the card's text -------------------------------------------------------------------
 
 def test_card_lines_and_table_text_take_their_direction_from_the_text(tmp_path):
-    """UI-11: card lines, the editor's table cells and the journal's card text carry dir="auto", so an
+    """UI-11: card lines, the editor's table cells and the Draw tab's earlier lines carry dir="auto", so an
     Arabic or Hebrew line reads right to left."""
     out = run_js(tmp_path, EDITOR + """
         import { Card } from '@src/ui.js'
-        import { JournalView } from '@src/journal.js'
+        import { DrawView } from '@src/draw.js'
         const card = mount(jsx(Card, { card: { deck: 'x', id: 'xx-01', human: 'اقرأ رسالة الخطأ', agent: 'כתוב את שורת השגיאה', tags: [] }, flipped: false })).tree
         const dirs = cls => all(card, n => (n.props.className || '').split(' ').includes(cls)).map(n => n.props.dir || null)
         one(all(view.tree, n => n.type === 'button' && n.props.className === 'nm' && text(n) === 'Mine'), 'Mine').props.onClick()
         view.render()
         const cells = cls => all(view.tree, n => n.type === 'td' && n.props.className === cls).map(n => n.props.dir || null)
-        queryClient.setQueryData(K('journal', 'all', 50), { ok: true, schema: 1, learning: true, totals: {}, draws: [
+        queryClient.setQueryData(K('journal', 'user', 50), { ok: true, schema: 1, learning: true, totals: {}, draws: [
           { draw_id: 'd1', at: new Date().toISOString(), by: 'user', deck: 'x', card: 'xx-01', view: { human: 'اقرأ', deck_name: 'X' } }] })
-        const journal = mount(jsx(JournalView, {})).tree
+        const journal = mount(jsx(DrawView, { decks: DECKS.decks })).tree
         console.log(JSON.stringify({ line: dirs('f-line'), instr: dirs('f-instr'), hf: cells('hf'), af: cells('af'),
-          jcard: all(journal, n => n.type === 'td' && n.props.className === 'jcard').map(n => n.props.dir || null) }))
+          jcard: all(journal, n => n.type === 'span' && n.props.className === 'ln').map(n => n.props.dir || null) }))
     """)
     assert out == {"line": ["auto"], "instr": ["auto"], "hf": ["auto"], "af": ["auto"], "jcard": ["auto"]}, out
 
@@ -708,7 +733,7 @@ def test_cards_fit_text_at_the_contract_limits_in_a_browser(tmp_path):
         const faces = await page.evaluate(() => [...document.querySelectorAll('.ubk-card .face')].map(el => {{
           const box = el.getBoundingClientRect()
           const bot = el.querySelector('.f-bot').getBoundingClientRect()
-          return {{ w: Math.round(box.width), kind: el.classList.contains('agent') ? 'agent' : 'human', over: el.scrollHeight - el.clientHeight,
+          return {{ w: Math.round(box.width), kind: el.classList.contains('rear') ? 'rear' : 'front', over: el.scrollHeight - el.clientHeight,
             foot: Math.round(bot.bottom - (box.bottom - box.width * 0.032)),
             spare: (cs => Math.round(parseFloat(cs.marginTop) + parseFloat(cs.marginBottom)))(getComputedStyle(el.querySelector('.f-line, .f-instr'))) }}
         }}))

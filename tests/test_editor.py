@@ -186,7 +186,7 @@ def test_agent_previews_saves_and_undoes(tmp_path):
     saved = ctx.call("unblockbruecke_decks", action="save", deck="writing", changes=change, confirm=pv["confirm"])
     assert saved["ok"] and saved["deck"] == "writing-own" and saved["version"] == 1
     got = ctx.call("unblockbruecke_decks", action="get", deck="writing-own")
-    assert got["deck"]["editable"] and len(got["deck"]["cards"]) == 9
+    assert got["deck"]["editable"] and len(got["deck"]["cards"]) == 17
     versions = ctx.call("unblockbruecke_decks", action="versions", deck="writing-own")
     assert versions["versions"][0]["author"] == "agent"
     deleted = ctx.call("unblockbruecke_decks", action="delete", deck="writing-own")
@@ -196,7 +196,7 @@ def test_agent_previews_saves_and_undoes(tmp_path):
 def test_agent_switch_and_list(tmp_path):
     ctx = tool_ctx(tmp_path)
     out = ctx.call("unblockbruecke_decks", action="switch", deck="shaders", draw=False)
-    assert out["switch"] == {"draw": False, "auto": True}
+    assert out["switch"] == {"draw": False, "auto": False}  # 0.2: Hermes draws from the Agent deck alone
     listed = {d["deck"]: d for d in ctx.call("unblockbruecke_decks", action="list")["decks"]}
     assert listed["shaders"]["switch"]["draw"] is False
     assert ctx.call("unblockbruecke_decks", action="switch", deck="nope", draw=True)["error"] == "unknown_deck"

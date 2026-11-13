@@ -28,7 +28,7 @@ export const SCHEMA_TEXT = 'This Desktop page and the Unblockbrücke plugin in t
 // in the caller's prefix, what to try is here.
 export const SERVER_TEXT = 'Hermes answered with an error. Try again, and check the gateway log if it repeats.'
 // Where the plugin's own settings live; every surface names them the same way.
-export const SETTINGS_PATH = 'Settings ▸ Plugins ▸ Unblockbrücke ▸ Agent settings'
+export const SETTINGS_PATH = 'Settings ▸ Plugins ▸ Unblockbrücke'
 
 /** The plain sentence for a refusal that is not the contract's: a hint the user can act on when the
  *  host refused the request (signed out, a file too large, a short `detail`), else SERVER_TEXT. */
@@ -164,8 +164,8 @@ export const TAG_RE = /^[a-z][a-z0-9-]{1,20}$/
 
 // The two built-in tags (contract §1); GET /decks/{slug} glossaries carry only the deck's own tags.
 export const BUILTIN_TAGS = {
-  human: 'Asks a person something; auto-draw never uses it when nobody is at the keyboard.',
-  auto: 'Written for the moment right after several failed tool calls; auto-draw prefers these.',
+  human: 'Asks a person something; Hermes never draws it on its own when nobody is at the keyboard.',
+  auto: 'Written for Hermes, for the moment right after several failed tool calls.',
 }
 
 export const isPagePath = () => {

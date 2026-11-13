@@ -1,5 +1,5 @@
-// Every route this Desktop half calls, one function each, exactly as the pinned contract lists them
-// (experiments/unblockbruecke/v0.1-contract.md §5). No other file calls rest(); the build test reads
+// Every route this Desktop half calls, one function each, exactly as the pinned contracts list them
+// (experiments/unblockbruecke/v0.1-contract.md §5, and v0.2-contract.md for what 0.2 adds). No other file calls rest(); the build test reads
 // this file and checks every path against the contract table.
 import { opId, rest } from './core.js'
 
@@ -29,5 +29,8 @@ export const api = {
   importDeck: body => post('/decks/import', body),
   exportDeck: slug => rest(`/decks/${enc(slug)}/export`),
   settings: () => rest('/settings'),
+  // 0.2: one key and value per call from the fixed list (autodraw, autodraw_threshold, card_of_day,
+  // learning); answers the same body as GET /settings.
+  setting: (key, value) => post('/setting', { key, value }),
   setSwitch: (deck, sw) => put('/settings/decks', { deck, ...sw }),
 }

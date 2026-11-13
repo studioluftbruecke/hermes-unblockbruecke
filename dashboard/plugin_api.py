@@ -160,6 +160,11 @@ def settings_get() -> JSONResponse:
     return _reply(_api().settings_get())
 
 
+@router.post("/setting")
+def setting(body: Any = Body(None)) -> JSONResponse:
+    return _reply(_api().setting_set(body))
+
+
 @router.put("/settings/decks")
 def settings_decks(body: Any = Body(None)) -> JSONResponse:
     return _reply(_api().switch(body))

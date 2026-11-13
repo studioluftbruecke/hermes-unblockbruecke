@@ -166,8 +166,8 @@ def test_core16_a_new_shipped_deck_of_the_users_name_is_said_out_loud(tmp_path, 
 def test_core12_infinite_numbers_fall_to_the_default(value):
     """CORE-12: `autodraw_threshold: .inf` (valid YAML) gives the default, never OverflowError."""
     settings = sub("settings")
-    got = settings.read(lambda key, default: value if key in ("autodraw_threshold", "autodraw_per_turn") else default)
-    assert 2 <= got["autodraw_threshold"] <= 6 and 1 <= got["autodraw_per_turn"] <= 3
+    got = settings.read(lambda key, default: value if key == "autodraw_threshold" else default)
+    assert 2 <= got["autodraw_threshold"] <= 6
     assert settings.as_int(float("inf"), 3, 2, 6) == 3
 
 

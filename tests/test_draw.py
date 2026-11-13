@@ -34,10 +34,11 @@ def test_auto_prefers_auto_cards_and_unattended_skips_human():
     assert ids(draw.candidates([deck], "any", tags=["lateral"])) == ["tt-05"]
 
 
-def test_auto_falls_back_to_all_cards_when_none_is_written_for_it():
+def test_auto_never_falls_back_to_cards_not_written_for_it():
+    """0.2 (AX-6): auto-draw uses only `auto` cards; 0.1 fell back to every card of the deck."""
     draw = sub("draw")
     deck = load(deck_doc())
-    assert len(draw.candidates([deck], "auto")) == 5
+    assert draw.candidates([deck], "auto") == []
 
 
 def test_no_repeat_of_the_last_three():

@@ -1,16 +1,18 @@
-// The decks sheet and editor (F12, F13): every deck with its two switches, the selected deck's cards
-// with what the journal says about them, and edits that always go preview -> diff -> Save (PUT with the
-// preview's confirm value). Versions restore in one click; every save, restore and delete shows Undo.
-import { ConfirmDialog, Switch, writeClipboardText } from '@hermes/plugin-sdk'
+// The Decks tab (F12, F13, 0.2 M4): the library with one Draw switch per deck (the switch for Hermes
+// is on the Hermes tab), the selected deck's cards with what the journal says about them, and the
+// editor. Your own decks save at once (one PUT per edit) with Undo and no Preview (D21); a shipped deck
+// has one "Make my own copy", which still goes preview -> diff -> Save, like an import. Tags are
+// optional in your own decks; the file name is never asked for. Row actions show on hover or focus.
+import { ConfirmDialog, Switch } from '@hermes/plugin-sdk'
 import { useEffect, useRef, useState } from 'react'
 import { jsx } from 'react/jsx-runtime'
 
 import { api } from './api.js'
-import { charCount, deckNames, SETTINGS_PATH, SLUG_RE, TAG_RE, toast, whenLocal } from './core.js'
+import { BUILTIN_TAGS, charCount, SLUG_RE, TAG_RE, toast, whenLocal } from './core.js'
 import { refreshPalette } from './palette.js'
 import { invalidateDecks, useDeck, useVersions, visibleDecks } from './queries.js'
-import { lastDeck, setLastDeck } from './state.js'
-import { Btn, h, Mark, SOURCE_LABEL } from './ui.js'
+import { setPressed, storedPressed } from './state.js'
+import { Btn, h, hk, Mark, SOURCE_LABEL } from './ui.js'
 
 const parseTags = text => String(text || '').split(/[\s,]+/).map(t => t.trim().toLowerCase()).filter(Boolean)
 const slugOf = name => String(name || '').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40)
@@ -165,7 +167,7 @@ function PreviewPanel({ slug, change, onCancel, onSaved }) {
 
 // ---- the cards table ---------------------------------------------------------------------------
 
-function CardEditor({ initial, onPreview, onCancel, submitLabel = 'Preview', blocked = false }) {
+function CardEditor({ initial, onPreview, onCancel, submitLabel = 'Save', blocked = false }) {
   const [human, setHuman] = useState(initial.human || '')
   const [agent, setAgent] = useState(initial.agent || '')
   const [tags, setTags] = useState((initial.tags || []).join(', '))
@@ -180,15 +182,18 @@ function CardEditor({ initial, onPreview, onCancel, submitLabel = 'Preview', blo
       h('textarea', { className: 'inp', rows: 2, value: human, dir: 'auto', onChange: e => setHuman(e.target.value.replace(/\n/g, ' ')), 'aria-label': 'Human face' })),
     h('label', { className: 'col', style: { gap: 3 } }, h('span', { className: 'note' }, `Agent face (${an}/220)`),
       h('textarea', { className: 'inp', rows: 3, value: agent, dir: 'auto', onChange: e => setAgent(e.target.value.replace(/\n/g, ' ')), 'aria-label': 'Agent face' })),
-    h('label', { className: 'col', style: { gap: 3 } }, h('span', { className: 'note' }, 'Tags (1 to 4, comma separated; a new tag gets a plain line in the deck glossary)'),
-      h('input', { className: 'inp', value: tags, onChange: e => setTags(e.target.value), 'aria-label': 'Tags', placeholder: 'own' })),
+    h('label', { className: 'col', style: { gap: 3 } }, h('span', { className: 'note' }, 'Tags, if you like (up to 4, comma separated)'),
+      h('input', { className: 'inp', value: tags, onChange: e => setTags(e.target.value), 'aria-label': 'Tags' })),
     badTag ? h('p', { className: 'note' }, `"${badTag}" is not a tag: lowercase letters, digits and "-", 2 to 21 characters.`) : null,
     h('div', { className: 'row' },
       h(Btn, { pri: true, disabled: !ok, onClick: () => onPreview({ human: human.trim(), agent: agent.trim(), tags: tagList.length ? tagList : undefined }) }, submitLabel),
       h(Btn, { onClick: onCancel }, 'Cancel')))
 }
 
-function CardsTable({ deck, onChange, editing, setEditing }) {
+/** A tag's meaning, shown on hover: the deck's glossary, else the built-in line. */
+const tagMeaning = (deck, tag) => (deck.glossary && deck.glossary[tag]) || BUILTIN_TAGS[tag] || ''
+
+function CardsTable({ deck, onChange, editing, setEditing, editable }) {
   const cards = deck.cards || []
   return h('div', { className: 'scroll' }, h('table', { className: 'tbl', 'data-ubk': 'cards' },
     h('thead', null, h('tr', null, h('th', null, 'Card'), h('th', null, 'Human face'), h('th', null, 'Agent face'), h('th', null, 'Tags'),
@@ -198,18 +203,18 @@ function CardsTable({ deck, onChange, editing, setEditing }) {
       if (editing === c.id) {
         return jsx('tr', { className: 'editing', children: [jsx('td', { className: 'id', children: c.id }, 'i'),
           jsx('td', { colSpan: 6, children: h(CardEditor, { initial: c, onCancel: () => setEditing(null),
-            onPreview: v => onChange({ label: `edit ${c.id}`, body: { changes: { edit: [{ id: c.id, ...v, tags: v.tags || c.tags }] } } }) }) }, 'e')] }, c.id)
+            onPreview: v => onChange({ label: `edit ${c.id}`, body: { changes: { edit: [{ id: c.id, ...v, tags: v.tags || [] }] } } }) }) }, 'e')] }, c.id)
       }
       return jsx('tr', { children: [
         jsx('td', { className: 'id', children: c.id }, 'i'),
         jsx('td', { className: 'hf', dir: 'auto', children: c.human }, 'h'),
         jsx('td', { className: 'af', dir: 'auto', children: c.agent }, 'a'),
-        jsx('td', { children: h('span', { className: 'tags' }, (c.tags || []).map(t => jsx('span', { children: t }, t))) }, 't'),
+        jsx('td', { children: h('span', { className: 'tags' }, (c.tags || []).map(t => jsx('span', { title: tagMeaning(deck, t) || undefined, children: t }, t))) }, 't'),
         jsx('td', { className: 'num', children: String(stats.drawn ?? 0) }, 'd'),
         jsx('td', { className: 'num', children: String(stats.helped ?? 0) }, 'p'),
-        jsx('td', { children: h('span', { className: 'row', style: { flexWrap: 'nowrap', gap: 4 } },
-          h(Btn, { sm: true, onClick: () => setEditing(c.id), 'aria-label': `Edit ${c.id}` }, 'Edit'),
-          h(Btn, { sm: true, onClick: () => onChange({ label: `remove ${c.id}`, body: { changes: { remove: [c.id] } } }), 'aria-label': `Remove ${c.id}` }, 'Remove')) }, 'x'),
+        jsx('td', { className: 'rowacts', children: editable ? h('span', { className: 'row', style: { flexWrap: 'nowrap', gap: 10 } },
+          h(Btn, { text: true, onClick: () => setEditing(c.id), 'aria-label': `Edit ${c.id}` }, 'Edit'),
+          h(Btn, { text: true, onClick: () => onChange({ label: `remove ${c.id}`, body: { changes: { remove: [c.id] } } }), 'aria-label': `Remove ${c.id}` }, 'Remove')) : null }, 'x'),
       ] }, c.id)
     }))))
 }
@@ -239,14 +244,9 @@ function Versions({ slug, onRestored }) {
   ] }, v.n))))
 }
 
-async function exportDeck(slug, mode) {
+async function exportDeck(slug) {
   try {
     const out = await api.exportDeck(slug)
-    if (mode === 'copy') {
-      await writeClipboardText(out.yaml)
-      toast(`Copied ${out.file_name} to the clipboard.`)
-      return
-    }
     const url = URL.createObjectURL(new Blob([out.yaml], { type: 'application/yaml' }))
     const a = document.createElement('a')
     a.href = url
@@ -263,7 +263,16 @@ async function exportDeck(slug, mode) {
 
 // ---- import, new deck --------------------------------------------------------------------------
 
-function ImportBox({ onImported }) {
+/** A file name no deck uses yet, from `base`: base, base-2, base-3, ... (the user never types one). */
+export function freeSlug(base, decks) {
+  const taken = new Set((decks || []).map(d => d.deck))
+  const root = (SLUG_RE.test(base) ? base : 'my-deck').slice(0, 36).replace(/-+$/, '') || 'my-deck'
+  if (!taken.has(root)) return root
+  for (let i = 2; i < 100; i++) if (!taken.has(`${root}-${i}`)) return `${root}-${i}`
+  return `${root}-${Date.now().toString(36).slice(-3)}`
+}
+
+function ImportBox({ decks, onImported }) {
   const input = useRef(null)
   const [state, setState] = useState(null) // {yaml, file_name, error, exists, problems, slug}
   const [confirmReplace, setConfirmReplace] = useState(false)
@@ -277,7 +286,7 @@ function ImportBox({ onImported }) {
       setState(null)
       onImported(out)
     } catch (error) {
-      setState({ ...state, ...extra, error: refusalText(error), exists: error.code === 'exists' || (!!extra.replace && !!state.exists), problems: problemsOf(error.body) })
+      setState({ ...state, ...extra, error: refusalText(error), code: error.code, exists: error.code === 'exists' || (!!extra.replace && !!state.exists), problems: problemsOf(error.body) })
       if (rethrow) throw error
     }
   }
@@ -298,70 +307,81 @@ function ImportBox({ onImported }) {
       setState(null)
       onImported(out)
     } catch (error) {
-      setState({ ...next, error: refusalText(error), exists: error.code === 'exists', problems: problemsOf(error.body) })
+      setState({ ...next, error: refusalText(error), code: error.code, exists: error.code === 'exists', problems: problemsOf(error.body) })
     }
   }
-  return h('div', { className: 'panel col', style: { padding: 14 }, 'data-ubk': 'import' },
-    h('div', { className: 'label', style: { margin: 0 } }, 'Bring your own'),
+  return h('div', { className: 'col', 'data-ubk': 'import' },
     h('div', { className: 'row' },
-      h(Btn, { onClick: () => input.current && input.current.click() }, 'Import a deck file'),
+      h(Btn, { sm: true, onClick: () => input.current && input.current.click() }, 'Import a deck file'),
       h('input', { ref: input, type: 'file', accept: '.yaml,.yml,text/yaml,application/yaml', style: { display: 'none' }, onChange: pick, 'aria-label': 'Deck file' })),
-    h('p', { className: 'note' }, 'Import a deck you own (YAML, the shape of the shipped decks). Imported decks stay on this machine and start switched off for auto-draw.'),
-    state && state.error ? h('p', { className: 'note', role: 'alert' }, state.error) : null,
+    state && state.error ? h('p', { className: 'note', role: 'alert' }, state.code === 'exists' ? 'You already have a deck from a file of that name.' : state.error) : null,
     state && state.problems ? h(ProblemList, { problems: state.problems }) : null,
     state && state.exists ? h('div', { className: 'row' },
-      h('input', { className: 'inp', style: { width: 200 }, value: state.slug || '', onChange: e => setState({ ...state, slug: e.target.value }), 'aria-label': 'File name' }),
-      h(Btn, { disabled: !SLUG_RE.test(state.slug || ''), onClick: () => send({ slug: state.slug }) }, 'Import under this file name'),
-      h(Btn, { danger: true, onClick: () => setConfirmReplace(true) }, 'Replace mine')) : null,
+      h(Btn, { sm: true, onClick: () => send({ slug: freeSlug(state.slug, decks) }) }, 'Import as a new deck'),
+      h(Btn, { sm: true, danger: true, onClick: () => setConfirmReplace(true) }, 'Replace mine')) : null,
     jsx(ConfirmDialog, { open: confirmReplace, onClose: () => setConfirmReplace(false), destructive: true, title: 'Replace your deck with this file?',
-      description: 'The file takes the place of your deck with the same file name. Your version stays under Versions, and Undo brings it back.',
+      description: 'The file takes the place of your deck of the same name. Your version stays under Versions, and Undo brings it back.',
       confirmLabel: 'Replace mine', onConfirm: () => send({ replace: true }, { rethrow: true }) }))
 }
 
-/** Why a new deck cannot take this name, or '' when it can. A name or file name already in use would
- *  edit (or copy) that deck instead of making a new one, so it is refused here. */
+/** Why a new deck cannot take this name, or '' when it can. The file name is made from the name and
+ *  never shown, so every refusal speaks about the name. */
 export function newDeckProblem(name, slug, decks) {
   const n = name.trim()
   if (!n) return 'Give the deck a name.'
   if (charCount(n) > 40) return 'The name can have at most 40 characters.'
-  if (!SLUG_RE.test(slug)) return 'The file name needs 2 to 40 lowercase letters, digits or "-".'
+  if (!SLUG_RE.test(slug)) return 'The name needs at least two letters or digits.'
   const list = decks || []
-  // A deck that comes with the plugin (shipped or community, also while your copy shadows it): its file
-  // name and its "-own" file name (where edits of it are saved) belong to it.
-  const bundled = s => {
-    const d = list.find(x => x.deck === s && (x.source === 'shipped' || x.source === 'community'))
-    return d ? d.name || d.deck : ''
-  }
-  const base = /-own$/.test(slug) ? bundled(slug.slice(0, -4)) : ''
-  if (base) return `The file name ${slug} holds your edits of ${base}. Open ${base} and edit it instead.`
-  const kept = bundled(slug)
-  if (kept) return `The file name ${slug} is taken by ${kept}, which comes with the plugin. Open it and edit it instead.`
-  const same = list.find(d => d.deck === slug)
-  if (same) return `The file name ${slug} is taken by ${same.name || same.deck}. Pick another name.`
   const named = list.find(d => String(d.name || '').trim().toLowerCase() === n.toLowerCase())
-  if (named) return `A deck named ${named.name} is already there. Pick another name.`
+  if (named) {
+    return named.source === 'shipped' || named.source === 'community'
+      ? `${named.name} comes with the plugin. Open it and make your own copy instead.`
+      : `A deck named ${named.name} is already there. Pick another name.`
+  }
   return ''
 }
 
-function NewDeck({ decks, onCancel, onPreview }) {
+/** A file name for a new deck called `name`: made from the name, never one that holds a shipped
+ *  deck's own copy (`<slug>-own`), and never one already taken. */
+export const newDeckSlug = (name, decks) => {
+  const base = slugOf(name)
+  const bundled = (decks || []).some(d => (d.source === 'shipped' || d.source === 'community') && (d.deck === base || `${d.deck}-own` === base))
+  return freeSlug(bundled ? `${base}-deck` : base, decks)
+}
+
+function NewDeck({ decks, onCancel, onSave }) {
   const [name, setName] = useState('')
-  const [slug, setSlug] = useState('')
-  const s = slug || slugOf(name)
-  const problem = newDeckProblem(name, s, decks)
+  const slug = newDeckSlug(name, decks)
+  const problem = newDeckProblem(name, slug, decks)
   return h('div', { className: 'panel col', style: { padding: 14 }, 'data-ubk': 'new-deck', onKeyDown: escapeCancels(onCancel) },
     h('h2', null, 'New deck'),
-    h('div', { className: 'row' },
-      h('label', { className: 'col grow', style: { gap: 3 } }, h('span', { className: 'note' }, 'Name'), h('input', { className: 'inp', value: name, dir: 'auto', onChange: e => setName(e.target.value), 'aria-label': 'Deck name' })),
-      h('label', { className: 'col', style: { gap: 3, width: 200 } }, h('span', { className: 'note' }, 'File name'), h('input', { className: 'inp mono', value: s, onChange: e => setSlug(e.target.value), 'aria-label': 'File name' }))),
+    h('label', { className: 'col', style: { gap: 3 } }, h('span', { className: 'note' }, 'Name'), h('input', { className: 'inp', value: name, dir: 'auto', onChange: e => setName(e.target.value), 'aria-label': 'Deck name' })),
     // Always in the tree, empty when the name is fine: a line that came and went would shift the card
     // editor below it to another child position, and React would remount it with an empty draft.
     h('p', { className: 'note', role: 'alert', 'data-ubk': 'new-deck-problem', style: { color: 'var(--ubk-red)', minHeight: '1.4em' } }, name.trim() ? problem : ''),
     h('p', { className: 'note' }, 'Write its first card; you can add more after saving.'),
-    h(CardEditor, { initial: { tags: ['own'] }, onCancel, submitLabel: 'Preview the new deck', blocked: !!problem,
-      onPreview: v => !problem && onPreview(s, { label: `new deck ${s}`, body: { changes: { meta: { name: name.trim() }, add: [v] } } }) }))
+    h(CardEditor, { initial: { tags: [] }, onCancel, submitLabel: 'Save the new deck', blocked: !!problem,
+      onPreview: v => !problem && onSave(slug, { label: `new deck ${name.trim()}`, body: { changes: { meta: { name: name.trim() }, add: [v] } } }) }))
 }
 
+/** Save an edit of your own deck at once (D21): one PUT without a preview. A backend that still wants
+ *  the preview's confirm value (0.1) or refuses the change answers with an error; the caller then
+ *  shows the preview panel, which explains the refusal or saves the 0.1 way. */
+async function saveAtOnce(slug, change) {
+  try {
+    const out = await api.save(slug, change.body)
+    afterWrite()
+    return { out }
+  } catch (error) {
+    return { error }
+  }
+}
+
+const savedNote = (out, setNote) => ({ text: n => `Saved ${n(out.deck)}: ${out.summary}${out.version ? ` (version ${out.version})` : ''}.`, undo: undoFor(out.deck, out.undo, text => setNote({ text })) })
+
 // ---- the sheet -----------------------------------------------------------------------------------
+
+const isOwn = deck => deck.source === 'own' || deck.source === 'imported'
 
 function DeckSheet({ slug, onSelect, setNote }) {
   const q = useDeck(slug)
@@ -378,42 +398,54 @@ function DeckSheet({ slug, onSelect, setNote }) {
   if (q.isLoading) return h('div', { className: 'panel', style: { padding: 16 } }, h('p', { className: 'note' }, 'Loading the deck…'))
   if (q.error) return h('div', { className: 'panel', style: { padding: 16 } }, h('p', { className: 'note' }, `The deck did not load: ${q.error.message}`))
   const deck = q.data.deck
+  const own = isOwn(deck) && deck.editable !== false
+  // v0.2-contract.md §5: GET /decks/{slug} says whether a PUT without a preview saves (your own deck);
+  // an imported deck and a backend without the field go through the preview.
+  const atOnce = deck.saves_at_once !== undefined ? !!deck.saves_at_once : deck.source === 'own'
   const versionsSlug = deck.edits_save_as || deck.deck
   const saved = out => {
     setChange(null)
     setEditing(null)
     setAdding(false)
     if (out.deck && out.deck !== slug) onSelect(out.deck)
-    setNote({ text: n => `Saved ${n(out.deck)}: ${out.summary} (version ${out.version}).`, undo: undoFor(out.deck, out.undo, text => setNote({ text })) })
+    setNote(savedNote(out, setNote))
   }
-  return h('div', { className: 'panel', style: { minWidth: 0 } },
+  // Your own deck: save at once; anything else (a shipped deck's copy) goes through the preview.
+  const apply = async next => {
+    if (!atOnce) return setChange(next)
+    const { out, error } = await saveAtOnce(deck.deck, next)
+    if (out) return saved(out)
+    setChange({ ...next, why: error })
+    return null
+  }
+  return h('div', { className: 'panel', style: { minWidth: 0 }, 'data-ubk': 'sheet' },
     h('div', { className: 'sheethead' },
-      h('h2', null, h(Mark, { mark: deck.mark }), h('span', { dir: 'auto' }, deck.name)),
-      h('span', { className: `badge${deck.source === 'own' || deck.source === 'imported' ? ' own' : ''}` }, SOURCE_LABEL[deck.source] || deck.source),
-      h('span', { className: 'badge' }, `v${deck.version}`), deck.license && deck.license !== 'own' ? h('span', { className: 'badge' }, deck.license) : null,
+      h('h2', null, h(Mark, { deck }), h('span', { dir: 'auto' }, deck.name)),
+      h('span', { className: `badge${own ? ' own' : ''}` }, SOURCE_LABEL[deck.source] || deck.source),
+      deck.license && deck.license !== 'own' ? h('span', { className: 'badge' }, deck.license) : null,
       h('span', { className: 'note' }, `by ${deck.by}`),
       h('span', { className: 'grow' }),
-      h(Btn, { sm: true, onClick: () => { setAdding(true); setEditing(null) } }, 'New card'),
-      h(Btn, { sm: true, onClick: () => setShowVersions(!showVersions), 'aria-expanded': showVersions }, 'Versions'),
-      h(Btn, { sm: true, onClick: () => exportDeck(deck.deck) }, 'Export'),
-      h(Btn, { sm: true, onClick: () => exportDeck(deck.deck, 'copy') }, 'Copy YAML'),
-      deck.source === 'own' || deck.source === 'imported' ? h(Btn, { sm: true, danger: true, onClick: () => setConfirmDelete(true) }, 'Delete deck') : null),
+      own ? h(Btn, { sm: true, onClick: () => { setAdding(true); setEditing(null) } }, 'New card')
+        : h(Btn, { sm: true, onClick: () => setChange({ label: 'your own copy', body: { changes: { meta: { name: deck.name } } } }) }, 'Make my own copy'),
+      h(Btn, { text: true, onClick: () => setShowVersions(!showVersions), 'aria-expanded': showVersions }, 'Versions'),
+      h(Btn, { text: true, onClick: () => exportDeck(deck.deck) }, 'Export'),
+      own ? h(Btn, { text: true, danger: true, onClick: () => setConfirmDelete(true) }, 'Delete deck') : null),
     h('div', { className: 'col', style: { padding: '10px 14px', gap: 10 } },
       deck.description ? h('p', { className: 'muted' }, deck.description) : null,
-      !deck.editable && deck.edits_save_as ? h('p', { className: 'note' }, `This deck ships with the plugin. Edits save as your own copy, ${deck.edits_save_as}, which then replaces it at the table.`) : null,
+      !own && deck.edits_save_as ? h('p', { className: 'note' }, 'This deck comes with the plugin. Make your own copy to change it; your copy then takes its place.') : null,
       deck.copy_of ? h('p', { className: 'note' }, `Your copy of ${deck.copy_of}.`) : null,
-      showVersions ? h('div', { className: 'col' }, h('div', { className: 'label', style: { margin: 0 } }, `Versions of ${versionsSlug}`),
+      showVersions ? h('div', { className: 'col' }, h('div', { className: 'label', style: { margin: 0 } }, 'Versions'),
         h(Versions, { slug: versionsSlug, onRestored: out => setNote({ text: n => `Restored version ${out.restored} of ${n(out.deck)}: ${out.summary}.`, undo: undoFor(out.deck, out.undo, text => setNote({ text })) }) })) : null,
       adding ? h('div', { className: 'panel', style: { padding: 12 } }, h('h3', null, 'New card'),
-        h(CardEditor, { initial: { tags: [] }, onCancel: () => setAdding(false), onPreview: v => setChange({ label: 'add a card', body: { changes: { add: [v] } } }) })) : null,
+        h(CardEditor, { initial: { tags: [] }, onCancel: () => setAdding(false), onPreview: v => apply({ label: 'add a card', body: { changes: { add: [v] } } }) })) : null,
       change ? h(PreviewPanel, { slug: deck.deck, change, onCancel: () => setChange(null), onSaved: saved }) : null),
-    h(CardsTable, { deck, onChange: setChange, editing, setEditing }),
+    h(CardsTable, { deck, onChange: apply, editing, setEditing, editable: own }),
     jsx(ConfirmDialog, { open: confirmDelete, onClose: () => setConfirmDelete(false), destructive: true, title: `Delete ${deck.name}?`,
       description: 'The deck leaves the table and the palette. Its versions stay, so Undo or Versions can bring it back.', confirmLabel: 'Delete deck',
       onConfirm: async () => {
         const out = await api.remove(deck.deck)
         afterWrite()
-        if (lastDeck() === deck.deck) setLastDeck('')
+        if (storedPressed() === deck.deck) setPressed('')
         onSelect('')
         setNote({ text: `Deleted ${deck.name || deck.deck}.`, undo: undoFor(deck.deck, out.undo, text => setNote({ text })) })
       } }))
@@ -427,56 +459,51 @@ export function DecksView({ decksData }) {
   const names = useRef(new Map())
   for (const d of decksData.decks || []) if (d.name) names.current.set(d.deck, d.name)
   const nameOf = slug => names.current.get(slug) || slug
-  const [newDeck, setNewDeck] = useState(null) // null | {} (form) | {slug, change}
+  const [newDeck, setNewDeck] = useState(null) // null | {} (form) | {slug, change} (the preview, when a save at once was refused)
   const current = all.find(d => d.deck === sel) || all[0]
-  const toggle = async (d, key, value) => {
+  const toggle = async (d, value) => {
     try {
-      await api.setSwitch(d.deck, { [key]: value })
+      await api.setSwitch(d.deck, { draw: value })
       afterWrite()
     } catch (error) {
       toast(`Could not switch ${d.name}: ${error.message}`, 'warning')
     }
   }
+  const saveNew = async (slug, change) => {
+    const { out, error } = await saveAtOnce(slug, change)
+    if (!out) return setNewDeck({ slug, change: { ...change, why: error } })
+    setNewDeck(null)
+    setSel(out.deck)
+    setNote(savedNote(out, setNote))
+    return null
+  }
   const broken = Object.entries(decksData.broken || {})
-  const auto = decksData.autodraw || {}
   return h('div', { className: 'col', style: { gap: 18 } },
     h('div', { className: 'decksheet' },
       h('div', { className: 'col' },
         h('div', { className: 'panel decklist', 'data-ubk': 'decklist' },
-          all.map(d => jsx('div', { className: `dl-row${current && current.deck === d.deck ? ' on' : ''}`, 'data-deck': d.deck, children: [
-            jsx('button', { type: 'button', className: 'nm', onClick: () => { setSel(d.deck); setNewDeck(null) }, children: [jsx(Mark, { mark: d.mark }, 'm'), jsx('span', { dir: 'auto', children: d.name }, 'n')] }, 'b'),
-            jsx('span', { className: 'sw', children: [
-              jsx('label', { title: 'Draw from this deck at the table, the Draw button and the palette', children: ['Draw', jsx(Switch, { size: 'xs', checked: !!(d.switch && d.switch.draw), onCheckedChange: v => toggle(d, 'draw', v), 'aria-label': `Draw from ${d.name}` }, 's')] }, 'd'),
-              jsx('label', { title: 'Hermes may auto-draw from this deck when it is stuck', children: ['Auto-draw', jsx(Switch, { size: 'xs', checked: !!(d.switch && d.switch.auto), onCheckedChange: v => toggle(d, 'auto', v), 'aria-label': `Auto-draw from ${d.name}` }, 's')] }, 'a'),
-            ] }, 's'),
-            jsx('span', { className: 'meta', children: [
-              jsx('span', { className: `badge${d.source === 'own' || d.source === 'imported' ? ' own' : ''}`, children: SOURCE_LABEL[d.source] || d.source }, 'src'),
-              jsx('span', { children: `${d.cards} cards` }, 'c'),
-              d.auto_cards ? jsx('span', { children: `${d.auto_cards} for auto-draw` }, 'a') : null,
-              d.copy_of ? jsx('span', { children: `copy of ${d.copy_of}` }, 'o') : null,
-            ] }, 'm'),
-          ] }, d.deck)),
-          h('div', { className: 'row', style: { padding: '8px 9px' } }, h(Btn, { sm: true, onClick: () => setNewDeck({}) }, 'New deck'))),
-        h('div', { className: 'col', style: { gap: 4 }, 'data-ubk': 'autodraw-note' },
-          h('p', { className: 'note' }, auto.on ? `Auto-draw is on: after ${auto.threshold} failed tool calls in a row, Hermes may draw a card.` : 'Auto-draw is off, so the Auto-draw switches do nothing yet.'),
-          h('p', { className: 'note' }, `Auto-draw decks: ${deckNames(auto.decks, decksData.decks).join(', ') || 'none'}. A deck with its Auto-draw switch off is left out.`),
-          auto.on ? null : h('p', { className: 'note' }, `Turn it on in plugin settings: ${SETTINGS_PATH}.`)),
-        broken.length ? h('div', { className: 'banner err' }, h('strong', null, 'Not loaded'), broken.map(([s, r]) => jsx('p', { className: 'note', children: `${s}: ${r}` }, s))) : null),
+          all.map(d => hk(d.deck, 'div', { className: `dl-row${current && current.deck === d.deck ? ' on' : ''}`, 'data-deck': d.deck },
+            h('button', { type: 'button', className: 'nm', onClick: () => { setSel(d.deck); setNewDeck(null) } }, h(Mark, { deck: d }), h('span', { dir: 'auto' }, d.name)),
+            h('label', { className: 'sw', title: 'Draw from this deck on the Draw tab, the chip and the palette' }, 'Draw',
+              jsx(Switch, { size: 'xs', checked: !!(d.switch && d.switch.draw), onCheckedChange: v => toggle(d, v), 'aria-label': `Draw from ${d.name}` })),
+            h('span', { className: 'meta' },
+              h('span', { className: `badge${isOwn(d) ? ' own' : ''}` }, SOURCE_LABEL[d.source] || d.source),
+              h('span', null, `${d.cards} cards`)))),
+          h('div', { className: 'row', style: { padding: '8px 9px' } }, h(Btn, { sm: true, onClick: () => setNewDeck({}) }, 'New deck'), h(ImportBox, { decks: decksData.decks, onImported: out => {
+            setSel(out.deck)
+            // `replaced` is true only when a deck of that file name was there before; an older backend
+            // without it answers a replace with undo {restore} and a fresh import with undo {delete}.
+            const replaced = out.replaced !== undefined ? !!out.replaced : !!(out.undo && out.undo.restore !== undefined)
+            setNote({ text: n => `${replaced ? 'Replaced' : 'Imported'} ${n(out.deck)} (${out.cards} cards). ${out.note || ''}`.trim(), undo: undoFor(out.deck, out.undo, text => setNote({ text })) })
+          } }))),
+        broken.length ? h('div', { className: 'banner err' }, h('strong', null, 'Not loaded'), broken.map(([s, r]) => hk(s, 'p', { className: 'note' }, `${s}: ${r}`))) : null),
       newDeck ? (newDeck.change
         ? h(PreviewPanel, { slug: newDeck.slug, change: newDeck.change, onCancel: () => setNewDeck(null), onSaved: out => {
           setNewDeck(null)
           setSel(out.deck)
-          setNote({ text: n => `Saved ${n(out.deck)}: ${out.summary} (version ${out.version}).`, undo: undoFor(out.deck, out.undo, text => setNote({ text })) })
+          setNote(savedNote(out, setNote))
         } })
-        : h(NewDeck, { decks: decksData.decks, onCancel: () => setNewDeck(null), onPreview: (slug, change) => setNewDeck({ slug, change }) }))
+        : h(NewDeck, { decks: decksData.decks, onCancel: () => setNewDeck(null), onSave: saveNew }))
         : current ? h(DeckSheet, { slug: current.deck, onSelect: setSel, setNote }) : h('div', { className: 'panel', style: { padding: 16 } }, h('p', { className: 'note' }, 'No decks loaded.'))),
-    h(ImportBox, { onImported: out => {
-      setSel(out.deck)
-      // `replaced` is true only when a deck of that file name was there before; an older backend
-      // without it answers a replace with undo {restore} and a fresh import with undo {delete}.
-      const replaced = out.replaced !== undefined ? !!out.replaced : !!(out.undo && out.undo.restore !== undefined)
-      setNote({ text: n => `${replaced ? 'Replaced' : 'Imported'} ${n(out.deck)} (${out.cards} cards). ${out.note || ''}`.trim(), undo: undoFor(out.deck, out.undo, text => setNote({ text })) })
-    } }),
     h(UndoBar, { note, nameOf, onClose: () => setNote(null) }))
 }
-

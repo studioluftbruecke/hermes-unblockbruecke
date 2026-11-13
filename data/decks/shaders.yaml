@@ -3,9 +3,9 @@ deck: "shaders"
 name: "Shaders"
 by: "Studio Luftbrücke"
 license: "CC-BY-4.0"
-version: 1
+version: 2
 faces: [human, agent]
-mark: "half"
+mark: "sphere"
 area: "shaders"
 description: "Black screens, banding, jitter and noise that looks like static"
 voice: "A demoscener at 2 a.m., tired, cheerful, and sure the bug is one line away."
@@ -49,3 +49,35 @@ cards:
     human: "Freeze time, then nudge one knob."
     agent: "Pin time to a value where it looks wrong, change one constant per render, and only let time run again once the still frame looks right."
     tags: [time, debug]
+  - id: "sh-09"
+    human: "Fold it once, then again."
+    agent: "Mirror the uv with abs, then fold it into segments around the centre. Put the segment count on a slider from 1 to 12 and render 1, 3 and 8 next to the original."
+    tags: [math]
+  - id: "sh-10"
+    human: "Let one corner run backwards."
+    agent: "Mask one corner softly and feed it negative time while the rest runs on. Put the mask radius on a slider and render the original and the new version at the same time value."
+    tags: [time]
+  - id: "sh-11"
+    human: "Borrow three colours from the room."
+    agent: "Ask for three colours the person can see right now, build a cosine palette from them and swap it in for the current colour ramp. Render the old and the new ramp side by side."
+    tags: [color, human]
+  - id: "sh-12"
+    human: "Turn the pixels into bricks."
+    agent: "Snap the uv to a coarse grid before anything samples it and posterize the colour to a few levels. Put grid size and levels on sliders and render it next to the original."
+    tags: [color]
+  - id: "sh-13"
+    human: "Give it a heartbeat."
+    agent: "Multiply the main scale or brightness by a pulse with a sharp attack and a slow decay. Put beats per minute and depth on sliders and render a few frames before and after."
+    tags: [time]
+  - id: "sh-14"
+    human: "Look at it through a bent lens."
+    agent: "Bend the uv with a barrel distortion around the centre before anything else runs, with the strength on a slider from minus to plus. Render it flat, pinched and bulged side by side."
+    tags: [math]
+  - id: "sh-15"
+    human: "Push one knob far past sensible."
+    agent: "Find the constant the look depends on most, widen its slider to ten times its normal range both ways, and render the three strangest frames you find next to the original."
+    tags: [math]
+  - id: "sh-16"
+    human: "Keep only the edges."
+    agent: "Find the brightness edges of the final colour with screen-space derivatives and draw only those as lines. Blend from the original to the line drawing on a slider and render both ends."
+    tags: [color]

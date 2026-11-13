@@ -34,7 +34,9 @@ SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9-]{1,39}$")
 ID_RE = re.compile(r"^([a-z]{2,4})-(\d{2})$")
 TAG_RE = re.compile(r"^[a-z][a-z0-9-]{1,20}$")
 LICENSES = ("CC-BY-4.0", "CC0-1.0", "own")
-MARKS = ("square", "circle", "triangle", "diamond", "half", "ring")
+# 0.2: a glyph per shipped deck (the sketch pick); own decks may keep 0.1's six shapes.
+MARKS = ("person", "code", "pencil", "shapes", "sphere", "robot",
+         "square", "circle", "triangle", "diamond", "half", "ring")
 HUMAN_MAX, AGENT_MAX = 90, 220
 MAX_CARDS = 200
 MAX_FILE_BYTES = 256 * 1024
@@ -44,7 +46,7 @@ OWN_SUFFIX = "-own"
 
 BUILTIN_TAGS = {
     "human": "Asks a person something, so Hermes never draws it on its own when nobody is at the keyboard.",
-    "auto": "Written for the moment right after several failed tool calls in a row; auto-draw prefers it.",
+    "auto": "Written for Hermes when its tool calls keep failing; Hermes draws only these when stuck.",
 }
 
 # Plain-text rules (contract §2). Each: (rule id, compiled pattern, what the user reads).
@@ -236,12 +238,14 @@ def file_shape(deck: dict) -> dict:
     return out
 
 
-def validate(doc: Any, slug: Optional[str] = None) -> tuple[Optional[dict], list[dict]]:
+def validate(doc: Any, slug: Optional[str] = None, tags_required: bool = True) -> tuple[Optional[dict], list[dict]]:
     """(normalised deck or None, problems). `slug` is the file name the deck must match, if any.
+    `tags_required`: shipped and community deck files need 1 to 4 tags per card; the user's own and
+    imported decks may have none (0.2, D21).
 
     Never raises: a field of the wrong type is a problem line like any other rule."""
     try:
-        deck, probs = _validate(doc, slug)
+        deck, probs = _validate(doc, slug, tags_required)
         return deck, capped(probs)
     except Exception as exc:  # a shape no rule foresaw is still a refusal, never a crash of the catalog
         return None, [problem("shape", f"the deck has a shape the loader cannot read ({type(exc).__name__})")]
@@ -251,7 +255,7 @@ def _face(value: Any) -> str:
     return value.strip() if isinstance(value, str) else ""
 
 
-def _validate(doc: Any, slug: Optional[str]) -> tuple[Optional[dict], list[dict]]:
+def _validate(doc: Any, slug: Optional[str], tags_required: bool = True) -> tuple[Optional[dict], list[dict]]:
     probs: list[dict] = []
     if not isinstance(doc, dict):
         return None, [problem("shape", "a deck file is a mapping with deck, name, cards, ...")]
@@ -323,8 +327,11 @@ def _validate(doc: Any, slug: Optional[str]) -> tuple[Optional[dict], list[dict]
         probs += text_problems(card.get("human"), "human", HUMAN_MAX, label)
         probs += text_problems(card.get("agent"), "agent", AGENT_MAX, label)
         tags = card.get("tags")
-        if not isinstance(tags, list) or not 1 <= len(tags) <= 4 or not all(isinstance(t, str) for t in tags):
-            probs.append(problem("tags", "a card has 1 to 4 tags", label))
+        if tags is None and not tags_required:
+            tags = []
+        lo = 1 if tags_required else 0
+        if not isinstance(tags, list) or not lo <= len(tags) <= 4 or not all(isinstance(t, str) for t in tags):
+            probs.append(problem("tags", "a card has 1 to 4 tags" if tags_required else "a card has at most 4 tags", label))
             tags = [t for t in (tags or []) if isinstance(t, str)] if isinstance(tags, list) else []
         for tag in tags:
             if not TAG_RE.match(tag):
@@ -348,8 +355,8 @@ def _validate(doc: Any, slug: Optional[str]) -> tuple[Optional[dict], list[dict]
     return deck, []
 
 
-def load_text(text: str, slug: Optional[str] = None) -> dict:
-    deck, probs = validate(parse_yaml(text), slug)
+def load_text(text: str, slug: Optional[str] = None, tags_required: bool = True) -> dict:
+    deck, probs = validate(parse_yaml(text), slug, tags_required)
     if deck is None:
         raise DeckError(summary(probs), probs)
     return deck
@@ -408,8 +415,17 @@ def reload_shipped() -> None:
 
 # --- switches (F13) ------------------------------------------------------------------------------
 
-def default_switch(source: str) -> dict:
-    """Drawing on for every deck; auto-draw eligibility off for imported decks (constraint 5)."""
+HERMES_DEFAULT = ("agent-unblock", "agent-unblock-own")  # 0.2: Hermes draws from the Agent deck alone by default
+SEED_KEY = "hermes_seed"
+
+
+def default_switch(source: str, slug: str = "") -> dict:
+    """Drawing on for every deck; the Hermes switch (`auto`) on for the Agent deck (and its own copy) only."""
+    return {"draw": True, "auto": slug in HERMES_DEFAULT and source != "imported"}
+
+
+def legacy_switch(source: str) -> dict:
+    """0.1's default, for the one-time seed: `auto` on for every deck but imported ones."""
     return {"draw": True, "auto": source != "imported"}
 
 
@@ -427,7 +443,7 @@ def _entry(switches: dict, slug: str) -> dict:
 
 def switch_for(switches: dict, slug: str, source: str) -> dict:
     entry = _entry(switches, slug)
-    base = default_switch(entry.get("source", source))
+    base = default_switch(entry.get("source", source), slug)
     return {"draw": bool(entry.get("draw", base["draw"])), "auto": bool(entry.get("auto", base["auto"]))}
 
 
@@ -446,6 +462,44 @@ def set_switch(store: Store, slug: str, draw: Optional[bool] = None, auto: Optio
         data["schema"] = SCHEMA
         store.write_json(SWITCHES_FILE, data)
         return entry
+
+
+def seed_hermes_switches(store: Store, legacy_decks: Any) -> bool:
+    """Once per data folder (PLAN-v0.2 M2): write each deck's Hermes switch from 0.1's rule, so an update
+    changes no deck Hermes drew from. 0.1 drew from a deck when its name (or the own copy that replaced
+    it) was in `autodraw_decks` and its `auto` switch was on. A missing list means 0.1's default
+    `["agent-unblock"]`; `[]` means none. True when this call wrote the seed."""
+    data = read_switches(store)
+    if data.get(SEED_KEY):
+        return False
+    names = legacy_decks if isinstance(legacy_decks, list) else ["agent-unblock"]
+    names = [n for n in names if isinstance(n, str)]
+    with store.lock():
+        data = read_switches(store)
+        if data.get(SEED_KEY):
+            return False
+        cat = catalog(store)
+        listed: set[str] = set()
+        for name in names:
+            listed.add(name)
+            deck = resolve(cat, name)
+            if deck is not None:
+                listed.add(deck["deck"])
+        for slug, deck in cat["decks"].items():
+            entry = dict(_entry(data, slug))
+            old_auto = bool(entry.get("auto", legacy_switch(entry.get("source", deck["source"]))["auto"]))
+            entry["auto"] = old_auto and slug in listed
+            data["decks"][slug] = entry
+        data[SEED_KEY] = {"at": _now_iso(), "from": names[:50]}
+        data["schema"] = SCHEMA
+        store.write_json(SWITCHES_FILE, data)
+    return True
+
+
+def _now_iso() -> str:
+    from . import bridge
+
+    return bridge.iso()
 
 
 def forget_switch(store: Store, slug: str) -> None:
@@ -490,7 +544,7 @@ def _user_file(path: Path, slug: str) -> tuple[str, Any]:
         hit = _DECK_CACHE.get(key)
     if hit is None or hit[0] != stamp:
         try:
-            result: tuple[str, Any] = ("ok", load_text(path.read_text(encoding="utf-8"), slug))
+            result: tuple[str, Any] = ("ok", load_text(path.read_text(encoding="utf-8"), slug, tags_required=False))
         except (DeckError, OSError, UnicodeDecodeError) as exc:
             result = ("broken", str(exc))
         except Exception as exc:  # one odd file never stops the other decks from drawing
@@ -597,6 +651,13 @@ def drawable(cat: dict, slugs: Optional[list] = None, for_auto: bool = False) ->
             continue
         out.append(deck)
     return out
+
+
+def hermes_decks(cat: dict) -> list[dict]:
+    """The decks Hermes draws from when stuck: Hermes switch (`auto`) on, not replaced by an own copy,
+    with at least one `auto` card. The Draw switch is the person's and does not count here."""
+    return [d for d in cat["decks"].values()
+            if d["switch"]["auto"] and not d.get("shadowed_by") and any("auto" in c["tags"] for c in d.get("cards") or [])]
 
 
 def find_card(deck: dict, card_id: str) -> Optional[dict]:

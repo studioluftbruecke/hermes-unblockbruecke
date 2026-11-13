@@ -1,5 +1,65 @@
 # Changelog
 
+## 0.2.0
+
+- One page with three tabs: **Draw** for you, **Hermes** for your agent, **Decks** for the library
+  and the editor. The table, the journal, the deck list with descriptions, "Show agent face",
+  "Use in chat", "Ask Hermes" and "Why this card?" are gone. Old links to the table and the
+  journal open Draw and Hermes.
+- Draw: the deck chips stand in one fixed order (Human, Coding, Writing, Design, Shaders, Agent,
+  All) and never move or fold. Exactly one is pressed, Human on a first run. A press picks the deck
+  for the next draw and draws nothing.
+- The card: the front shows the line and the deck, with no face label. The back is headed "For
+  Hermes"; a click (or F) turns the card. The corner shows the deck's mark and the card number
+  (`05`, not `co-05`).
+- **Pass it to Hermes** drafts one message into the chat in focus, or a new chat: the card, its
+  line and its back, so Hermes can start the move without looking the card up. It never sends.
+- Under the card stand your earlier draws; the card before asks **Helped** or **Not this time**
+  once. **Cards that helped** lists the cards you marked, with **Reset learning**.
+- Deck names: Human unblock is now **Human**, Agent unblock is now **Agent**. Each shipped deck has
+  a mark that shows what it is about: a person, two chevrons, a pencil, three shapes, a shaded
+  sphere, a robot head.
+- **Hermes draws when stuck** brings a card after 3 failed tool calls out of the last 5 in one turn,
+  not only after 3 in a row. The count stays within one turn. One card per turn at most: the
+  setting `autodraw_per_turn` is gone.
+- Hermes draws only cards written for it (tagged `auto`), from decks whose Hermes switch is on: the
+  Agent deck by default. The setting `autodraw_decks` is gone; on the first read after the update,
+  a stored list sets the deck switches once. When the error says a server could not be reached, a
+  card about reframing the problem comes first.
+- What Hermes reads is shorter: the card's back, one sentence and a draw id, about 300 characters.
+  The call still counts as failed.
+- The Hermes tab: the switch with one sentence and an example card, **Failed calls before a card**
+  (2 to 6), a switch for each deck with cards written for Hermes, and **What Hermes drew lately**
+  with where the turn ran (Desktop chat, Kanban task, Cron job, CLI, Delegated task) and what the
+  next call did, as a fact. Draws in runs nobody watched show up there too.
+- The page saves settings through a new route that takes only the plugin's five settings, one at a
+  time, and refuses to save in unattended runs.
+- On a turn where Hermes drew a card, one line follows the reply: the card itself in Desktop, a plain
+  line on other surfaces.
+- The status bar chip carries the card of the day again, as one line. Its popover holds the card,
+  **Pass it to Hermes**, **Another** and **Open Unblockbrücke**. When Hermes draws in the chat in
+  focus, the chip shows that card's line and a dot until you click it, the next turn starts or
+  another chat gets focus; the popover then asks **Helped** or **Not this time**. The chip asks about
+  Hermes' draws only while the feature is on. With the card of the day off, it reads Draw.
+- Decks: your own decks save at once, with **Undo**, without a preview and without a file name
+  field (it is made from the name). Tags are optional in your own decks; community deck files still
+  need 1 to 4 per card. A shipped deck has one **Make my own copy**. Row actions show on hover, there
+  is one **Export**, and each deck has one **Draw** switch (the second switch moved to the Hermes
+  tab).
+- The settings page is a pointer: **Open Unblockbrücke**, the **Sidebar** block and the update line.
+  The deck switches and **Reset learning** moved onto the page. The setting texts are shorter.
+- The command palette has **Draw a card**, **Draw from <deck>** and **Open Unblockbrücke**; **Open
+  decks** is gone.
+- Desktop's own tabs, switches, popover and segmented control where Desktop provides them.
+- The bundled skill is shorter, with the same rules.
+- 28 new cards: Shaders, Writing and Design 8 each, Human 4. They are creative moves on work that
+  already runs as well as ways out of a block. Six decks now hold 108 cards.
+- The sidebar row and the settings page use the `copy` icon, the closest built-in icon to the
+  status bar's two cards.
+- Your own copy of a shipped deck replaces that deck on the page, so it does not get the new cards.
+  To get them, **Export** your copy, **Delete deck**, and press **Make my own copy** on the shipped
+  deck again.
+
 ## 0.1.4
 
 - The sidebar row has a place among the Studio Luftbrücke rows: position 53, below Kanban (50).

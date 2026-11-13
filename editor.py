@@ -8,6 +8,9 @@ can be undone from the page or by the agent.
 A save must name the `confirm` value its preview returned: it is a hash of the file the preview
 started from and the text it would write, so a save never lands on a deck that changed since the
 preview (another window, the agent, a second route call), and the agent always shows the diff first.
+0.2 (D21): a person's edit of an own deck (or a new one) saves at once, without a preview; the version
+it writes is its Undo. The first own copy of a shipped deck, imported decks and the agent's edits keep
+the preview. Tags are optional in the user's decks.
 """
 from __future__ import annotations
 
@@ -162,7 +165,7 @@ def build(slug: str, base: Optional[dict], deck: Optional[dict] = None, changes:
             if new.get("id") is not None and not isinstance(new["id"], str):
                 raise EditError("a card id is text like ab-01")
             card = {"id": new.get("id") or _next_id(prefix, doc["cards"]), "human": _text(new.get("human", ""), "human"),
-                    "agent": _text(new.get("agent", ""), "agent"), "tags": _tags(new.get("tags")) or ["own"]}
+                    "agent": _text(new.get("agent", ""), "agent"), "tags": _tags(new.get("tags"))}
             doc["cards"].append(card)
         # The page has no glossary field: a tag new to this deck gets a plain line the user can edit later.
         for card in doc["cards"]:
@@ -238,7 +241,7 @@ def preview(store: Store, slug: str, deck: Optional[dict] = None, changes: Optio
     cat = decks_mod.catalog(store)
     target, base = target_for(cat, slug)
     doc = build(target, base, deck, changes)
-    clean, problems = decks_mod.validate(doc, target)
+    clean, problems = decks_mod.validate(doc, target, tags_required=False)
     if clean is None:
         return {"ok": False, "error": "invalid_deck", "target": target, **decks_mod.problem_fields(problems),
                 "message": rules_message("The deck would break", problems)}
@@ -253,26 +256,43 @@ def preview(store: Store, slug: str, deck: Optional[dict] = None, changes: Optio
             "cards": len(clean["cards"])}
 
 
+def saves_at_once(cat: dict, slug: str) -> bool:
+    """Whether a person's edit of `slug` saves without a preview (D21): it lands in an own deck (an own
+    copy that already exists included) or makes a new one. False for the first own copy of a shipped or
+    community deck and for imported decks."""
+    try:
+        target, base = target_for(cat, slug)
+    except EditError:
+        return False
+    if base is None:
+        return target not in cat["decks"]
+    return base.get("source") == "own" and base.get("deck") == target
+
+
 def save(store: Store, slug: str, confirm: str, author: str, deck: Optional[dict] = None,
-         changes: Optional[dict] = None, replace: bool = False) -> dict:
+         changes: Optional[dict] = None, replace: bool = False, at_once: bool = False) -> dict:
+    """Save after a preview (`confirm`), or with `at_once` (a person's click, D21) without one where
+    `saves_at_once` allows it; a `confirm` that is sent is always checked."""
     if author not in AUTHORS:
         raise EditError("author must be user or agent")
     with store.lock():
         pv = preview(store, slug, deck, changes)
         if not pv["ok"]:
             raise EditError(pv["message"], "invalid_deck", **decks_mod.problem_fields(pv["problems"]))
-        if confirm != pv["confirm"]:
+        now = at_once and author == "user" and not confirm and saves_at_once(decks_mod.catalog(store), slug)
+        if not now and confirm != pv["confirm"]:
             raise EditError("The deck changed since that preview, or the save differs from it. Preview again and "
                             "save with the new confirm value.", "stale_preview", preview=pv)
         if pv["diff"]["summary"] == "no change" and current_text(store, pv["target"]):
-            return {"ok": True, "deck": pv["target"], "version": latest(store, pv["target"]), "summary": "no change"}
+            return {"ok": True, "deck": pv["target"], "version": latest(store, pv["target"]), "summary": "no change",
+                    "saved_at_once": bool(now)}
         if _unloadable(store, pv["target"]) and not replace:
             raise EditError(_UNLOADABLE.format(slug=pv["target"], what="save"), "exists")
         _keep_unrecorded(store, pv["target"], author, "kept before a save replaced it")
         before = _index(store, pv["target"])
         n = _write(store, pv["target"], pv["yaml"], author, pv["summary"])
     return {"ok": True, "deck": pv["target"], "version": n, "summary": pv["summary"], "diff": pv["diff"],
-            "undo": _undo(before, n, pv["target"])}
+            "undo": _undo(before, n, pv["target"]), "saved_at_once": bool(now)}
 
 
 def _undo(before: list[dict], n: int, slug: str) -> dict:
@@ -427,7 +447,7 @@ def _load_or_none(text: str, slug: str) -> Optional[dict]:
     if not text:
         return None
     try:
-        return decks_mod.load_text(text, slug)
+        return decks_mod.load_text(text, slug, tags_required=False)
     except DeckError:
         return None
 
@@ -468,7 +488,7 @@ def import_text(store: Store, text: str, author: str, slug: Optional[str] = None
         raise EditError("the file name must be text")
     slug = slug or str(doc.get("deck") or "")
     doc = {**doc, "deck": slug}
-    deck, problems = decks_mod.validate(doc, slug)
+    deck, problems = decks_mod.validate(doc, slug, tags_required=False)
     if deck is None:
         raise EditError(rules_message("The deck breaks", problems), "invalid_deck", **decks_mod.problem_fields(problems))
     if slug in decks_mod.SHIPPED:
@@ -486,7 +506,7 @@ def import_text(store: Store, text: str, author: str, slug: Optional[str] = None
         decks_mod.set_switch(store, slug, source="imported", auto=False)
     return {"ok": True, "deck": slug, "version": n, "cards": len(deck["cards"]), "source": "imported",
             "replaced": existed, "undo": _undo(before, n, slug),
-            "note": "Imported decks are off for auto-draw until you switch that on; drawing by hand works now."}
+            "note": "Hermes does not draw from an imported deck until you switch that on; you can draw from it now."}
 
 
 def export(store: Store, slug: str, path: Optional[str] = None, overwrite: bool = False) -> dict:

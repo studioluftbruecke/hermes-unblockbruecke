@@ -1,7 +1,8 @@
 """Unblockbrücke: cards to unblock yourself or your agent.
 
 `register(ctx)` adds the agent tools in `REGISTERED`, the `/card` command, the
-`transform_tool_result` hook for auto-draw (off by default) and the bundled skill. State lives in
+`transform_tool_result` hook for auto-draw (off by default), the `transform_llm_output` hook that names
+an auto-drawn card under the reply (D18 (b)) and the bundled skill. State lives in
 `ctx.state.data_dir`; the dashboard routes (`dashboard/plugin_api.py`) compute the same folder per
 call. Sibling modules load lazily: pytest imports this file on its own, and the package name differs
 between Hermes, the dashboard and the tests.
@@ -81,7 +82,8 @@ def make_handler(tool: str, ctx, store, read_settings):
     def handler(args: dict, session_id: str = "", **_kwargs: Any) -> str:
         try:
             rt = runtime(store=store, settings=read_settings(), unattended=lambda: bridge.unattended_reason(ctx),
-                         session_id=session_id or "", author="agent")
+                         session_id=session_id or "", author="agent", where=lambda: bridge.where(ctx))
+            _mod("service").ensure_seed(store, rt.settings)
             result = module.handle(dict(args) if isinstance(args, dict) else {}, rt)
         except Exception as exc:  # never a traceback into the chat
             logger.warning("unblockbruecke: %s failed", tool, exc_info=True)
@@ -108,16 +110,38 @@ def register(ctx) -> None:
     if callable(getattr(ctx, "register_hook", None)):
         bridge = _mod("bridge")
         hook = _mod("autodraw").AutoDraw(lambda: store, read_settings, lambda: bridge.unattended_reason(ctx),
-                                         autodraw_on=autodraw_reader(ctx))
+                                         autodraw_on=autodraw_reader(ctx), where=lambda: bridge.where(ctx))
         ctx.register_hook("transform_tool_result", hook)
+        ctx.register_hook("transform_llm_output", reply_line(hook))
     _register_skill(ctx)
+
+
+def reply_line(autodraw_hook):
+    """D18 (b), M0 P3: on a turn where auto-draw attached a card, one line after the reply, added without
+    the model and without holding the stream: the card directive on Desktop (the page's renderer shows
+    the card), a plain line elsewhere. Every other turn: None (no change). Fail-open."""
+    def on_output(response_text: Any = "", platform: str = "", turn_id: str = "", **_kw: Any):
+        try:
+            card = autodraw_hook.card_for_turn(turn_id)
+            if card is None or not isinstance(response_text, str) or not response_text.strip():
+                return None
+            if str(platform or "").lower() == "desktop":
+                line = f'::card{{deck="{card["deck"]}" id="{card["id"]}"}}'
+            else:
+                line = f"Unblockbrücke drew a card for Hermes: {card['human']} ({card['id']})"
+            return response_text.rstrip() + "\n\n" + line
+        except Exception:
+            logger.debug("unblockbruecke: reply line failed open", exc_info=True)
+            return None
+
+    return on_output
 
 
 def _register_skill(ctx) -> None:
     skill = Path(__file__).resolve().parent / "skills" / SKILL_NAME / "SKILL.md"
     if callable(getattr(ctx, "register_skill", None)) and skill.exists():
         try:
-            ctx.register_skill(SKILL_NAME, skill, "Use Unblockbrücke: when to offer a card, how to coach with a "
-                                                  "card's agent face, auto-draw, the deck file format.")
+            ctx.register_skill(SKILL_NAME, skill, "Use Unblockbrücke: which tool for which moment, how to use a "
+                                                  "card, Hermes draws when stuck, deck edits.")
         except ValueError:
             pass  # already registered by an earlier load in this process

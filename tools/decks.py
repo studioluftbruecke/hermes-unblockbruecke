@@ -20,7 +20,7 @@ SCHEMA = {
         "preview's confirm value. "
         "Always preview and show the user the diff before save. "
         "versions lists saved versions; restore brings version n back; delete removes an own or imported deck. "
-        "switch turns draw and auto on or off for one deck. "
+        "switch turns a deck's Draw switch (draw) and its Hermes switch (auto, Hermes draws when stuck) on or off. "
         "import reads a YAML deck file at a full path the user names; export returns YAML, and with path writes "
         "a .yaml file. "
         "Change format and card rules: skill unblockbruecke:unblockbruecke."),
@@ -36,7 +36,7 @@ SCHEMA = {
             "confirm": {"type": "string", "description": "save: the confirm value of the preview you showed."},
             "version": {"type": "integer", "description": "restore: a version number from versions."},
             "draw": {"type": "boolean", "description": "switch: drawing on or off."},
-            "auto": {"type": "boolean", "description": "switch: auto-draw may use this deck."},
+            "auto": {"type": "boolean", "description": "switch: Hermes may draw from this deck when stuck."},
             "path": {"type": "string", "description": "import: the deck file; export: where to write (optional)."},
             "overwrite": {"type": "boolean", "description": "export: replace an existing deck file."},
             "replace": {"type": "boolean", "description": "import: replace your deck of the same name; save: replace a deck file that does not load."},

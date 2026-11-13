@@ -90,7 +90,7 @@ def test_card_command(tmp_path):
     text = handler("coding", session_id="s-9")
     assert text.startswith("Coding · co-") and "For an agent" not in text
     agent = handler("agent")
-    assert agent.startswith("Agent unblock · ag-") and "For an agent: " in agent
+    assert agent.startswith("Agent · ag-") and "For an agent: " in agent
     assert handler("").count("\n") == 1
     assert "coding (" in handler("decks")
     assert "no deck named music" in handler("music")

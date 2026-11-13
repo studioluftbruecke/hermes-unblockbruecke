@@ -115,7 +115,8 @@ def test_catalog_merges_user_decks_and_switch_defaults(tmp_path, monkeypatch):
     decks.set_switch(store, "bought", source="imported")
     cat = decks.catalog(store)
     assert set(cat["decks"]) == {"ship-one", "mine", "bought"}
-    assert cat["decks"]["mine"]["source"] == "own" and cat["decks"]["mine"]["switch"] == {"draw": True, "auto": True}
+    # 0.2: Hermes draws from the Agent deck alone by default; an own deck starts off for Hermes
+    assert cat["decks"]["mine"]["source"] == "own" and cat["decks"]["mine"]["switch"] == {"draw": True, "auto": False}
     assert cat["decks"]["bought"]["source"] == "imported"
     assert cat["decks"]["bought"]["switch"] == {"draw": True, "auto": False}  # imported: off for auto-draw
     assert cat["decks"]["ship-one"]["source"] == "shipped" and "shadows" not in cat["decks"]["ship-one"]  # P2-CORE-S3
@@ -165,14 +166,15 @@ def test_shipped_decks_load_without_problems():
 
 
 def test_shipped_deck_set_matches_the_plan():
-    """PLAN M1 and A12: Agent unblock 24 (at least 12 auto), Human unblock 24, four area decks of 6 to 8."""
+    """PLAN M1, A12 and PLAN-new-cards: Agent 24 (at least 12 auto), Human 28, Coding 8, Design,
+    Shaders and Writing 16 each: 108 cards."""
     shipped = sub("decks").SHIPPED
     assert set(shipped) == {"agent-unblock", "human-unblock", "coding", "design", "shaders", "writing"}
     agent = shipped["agent-unblock"]["cards"]
-    assert len(agent) == 24 and sum("auto" in c["tags"] for c in agent) >= 12
-    assert len(shipped["human-unblock"]["cards"]) == 24
+    assert sum("auto" in c["tags"] for c in agent) >= 12
+    counts = {slug: len(deck["cards"]) for slug, deck in shipped.items()}
+    assert counts == {"agent-unblock": 24, "human-unblock": 28, "coding": 8, "design": 16, "shaders": 16, "writing": 16}, counts
     for area in ("coding", "design", "shaders", "writing"):
-        assert 6 <= len(shipped[area]["cards"]) <= 8, area
         assert shipped[area].get("area") == area
     ag03 = sub("decks").find_card(shipped["agent-unblock"], "ag-03")
     assert ag03["agent"].startswith("Name the one assumption your last three attempts shared")  # U5's card

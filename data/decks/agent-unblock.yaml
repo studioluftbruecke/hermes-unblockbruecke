@@ -1,11 +1,11 @@
 schema: 1
 deck: "agent-unblock"
-name: "Agent unblock"
+name: "Agent"
 by: "Studio Luftbrücke"
 license: "CC-BY-4.0"
 version: 1
 faces: [human, agent]
-mark: "square"
+mark: "robot"
 description: "Errors, dead ends, loops: one concrete next move for a stuck agent"
 voice: "A calm senior engineer who has watched this exact loop before and knows the next move."
 glossary:

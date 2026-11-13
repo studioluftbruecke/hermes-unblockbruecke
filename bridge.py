@@ -8,6 +8,8 @@
   fallback when that import fails.
 - `unattended_reason(ctx)`: why no person is at the keyboard (copied from Eselsbrücke's
   `hermes_bridge`, constraint 6), or None in an attended chat.
+- `where(ctx)`: where the turn runs (Desktop chat, kanban task, cron job, CLI, ...) for the journal
+  (0.2, AX-2); `route_unattended()`: the same markers for a page route (R10).
 """
 from __future__ import annotations
 
@@ -169,6 +171,84 @@ def unattended_reason(ctx: Any = None, environ: Optional[dict] = None) -> Option
     platform = surface or _session_env("HERMES_SESSION_PLATFORM").strip().lower()
     if platform in UNATTENDED_PLATFORMS:
         return f"the unattended {platform} surface"
+    return None
+
+
+# --- where the turn runs (0.2, AX-2) ---------------------------------------------------------------
+# Read from Hermes' session markers, each in a try: a marker that moved answers "unknown", never an
+# error. Under `plugins.isolation: host` most markers are not visible in the host child.
+
+def _policy_source() -> str:
+    try:
+        from gateway.session_policy import active_policy
+
+        policy = active_policy()
+        return str(getattr(policy, "source", "") or "") if policy is not None else ""
+    except Exception:
+        return ""
+
+
+def _delegated_child() -> bool:
+    try:
+        from agent.delegation_context import is_delegated_child_context
+
+        return bool(is_delegated_child_context())
+    except Exception:
+        return False
+
+
+LOCAL_CLI = frozenset({"cli", "tui", "oneshot", "tool", "local"})
+
+
+def where(ctx: Any = None, environ: Optional[dict] = None) -> tuple[str, str]:
+    """(code, platform): code is one of desktop, kanban, cron, cli, subagent, api, editor, webhook,
+    messaging, unknown; platform names the messaging platform for `messaging`, else ""."""
+    env = os.environ if environ is None else environ
+    try:
+        if ctx is not None and ctx.current_cron_execution() is not None:
+            return "cron", ""
+    except Exception:
+        pass
+    if _truthy(_session_env("HERMES_CRON_SESSION")):
+        return "cron", ""
+    source = (_policy_source() or _session_env("HERMES_SESSION_SOURCE")).strip().lower()
+    if source == "kanban" or env.get("HERMES_KANBAN_TASK"):
+        return "kanban", ""
+    if source == "subagent" or _delegated_child():
+        return "subagent", ""
+    surface = ""
+    try:
+        surface = str((ctx.session_surface() if ctx is not None else "") or "")
+    except Exception:
+        surface = ""
+    surface = (surface or _session_env("HERMES_SESSION_PLATFORM")).strip().lower()
+    for name in (surface, source):  # the session's own surface first, then how the session was made
+        if name in ("desktop", "gui"):
+            return "desktop", ""
+        if name in LOCAL_CLI:
+            return "cli", ""
+        if name == "api_server":
+            return "api", ""
+        if name == "acp":
+            return "editor", ""
+        if name in ("webhook", "msgraph_webhook"):
+            return "webhook", ""
+        if name == "cron":
+            return "cron", ""
+    if surface:
+        return "messaging", surface[:40]
+    return "unknown", ""
+
+
+def route_unattended(environ: Optional[dict] = None) -> Optional[str]:
+    """Why a page route runs without a person (R10), from the process's own markers only: a scheduled job
+    or a single-query run. A route has no session, so the host-blind rule of `unattended_reason` does
+    not apply (every route runs in the plugin host child under isolation)."""
+    env = os.environ if environ is None else environ
+    if _truthy(env.get("HERMES_CRON_SESSION")) or _truthy(_session_env("HERMES_CRON_SESSION")):
+        return "a scheduled job"
+    if _truthy(env.get("HERMES_SINGLE_QUERY_SESSION")) or _truthy(_session_env("HERMES_SINGLE_QUERY_SESSION")):
+        return "a single-query run (hermes chat -q or -z)"
     return None
 
 

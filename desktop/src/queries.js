@@ -34,19 +34,23 @@ export function useSettings() {
   return useQuery({ queryKey: key(profile, 'settings'), queryFn: api.settings, staleTime: 30000, retry: false })
 }
 
+/** The settings object of a GET /settings (or POST /setting) answer, or null. */
+export const settingsOf = data => (data && data.settings) || null
+
 export function useVersions(slug) {
   const profile = useProfile()
   return useQuery({ queryKey: key(profile, 'versions', slug), queryFn: () => api.versions(slug), enabled: !!slug, retry: false })
 }
 
-/** Q3: the newest auto-draw in one chat, polled every 5 s while Desktop is in front. */
-export function useAutoDraw(sessionId) {
+/** Q3: the newest draw by Hermes in one chat, polled every 5 s while Desktop is in front, and only while
+ *  "Hermes draws when stuck" is on (HX-15): with the feature off nothing polls. */
+export function useAutoDraw(sessionId, on) {
   const profile = useProfile()
   return useQuery({
     queryKey: key(profile, 'journal', 'auto', sessionId || '-'),
     queryFn: () => api.journal({ by: 'auto', session: sessionId, limit: 1 }),
-    enabled: !!sessionId,
-    refetchInterval: 5000,
+    enabled: !!sessionId && !!on,
+    refetchInterval: on ? 5000 : false,
     refetchIntervalInBackground: false,
     retry: false,
   })

@@ -1,5 +1,5 @@
-// Palette rows (F9): "Draw a card", "Open Unblockbrücke" (the page, also when the sidebar row is hidden),
-// "Open decks", one "Draw from <deck name>" per drawable deck.
+// Palette rows (F9, the 0.2 names table): "Draw a card", "Draw from <deck name>" per drawable deck,
+// and "Open Unblockbrücke" (the page, also when the sidebar row is hidden).
 // Rows register at load and again whenever the deck list may have changed (a switch, a save).
 import { PALETTE_AREA, queryClient } from '@hermes/plugin-sdk'
 
@@ -20,8 +20,7 @@ export function registerPalette(ctx) {
   ctxRef = ctx
   fixed = [
     ctx.register({ id: 'palette-draw', area: PALETTE_AREA, data: { id: `${ID}.palette.draw`, label: 'Draw a card', action: DRAW_ACTION, keywords: KEYWORDS, run: () => drawCard() } }),
-    ctx.register({ id: 'palette-open', area: PALETTE_AREA, data: { id: `${ID}.palette.open`, label: 'Open Unblockbrücke', keywords: [...KEYWORDS, 'open', 'page', 'table', 'sidebar'], run: () => openPage() } }),
-    ctx.register({ id: 'palette-decks', area: PALETTE_AREA, data: { id: `${ID}.palette.decks`, label: 'Open decks', keywords: [...KEYWORDS, 'deck', 'edit', 'import', 'export'], run: () => openPage('decks') } }),
+    ctx.register({ id: 'palette-open', area: PALETTE_AREA, data: { id: `${ID}.palette.open`, label: 'Open Unblockbrücke', keywords: [...KEYWORDS, 'open', 'page', 'decks', 'hermes', 'sidebar'], run: () => openPage() } }),
   ]
   return refreshPalette()
 }

@@ -118,7 +118,7 @@ def test_delete_undo_keeps_an_own_decks_switch(tmp_path):
     gone = editor.delete(store, "mine", "user")
     editor.restore(store, "mine", gone["undo"]["restore"], "user")
     deck = decks.catalog(store)["decks"]["mine"]
-    assert deck["source"] == "own" and deck["switch"] == {"draw": False, "auto": True}
+    assert deck["source"] == "own" and deck["switch"] == {"draw": False, "auto": False}  # 0.2: Hermes off for own decks
 
 
 def test_a_new_deck_of_a_deleted_name_does_not_inherit_its_switch(tmp_path):
@@ -381,15 +381,16 @@ def test_editor_and_deck_tool_echo_short(tmp_path):
         assert out["ok"] is False and len(out["message"]) < 300, (args["action"], len(out["message"]))
 
 
-# --- CORE-13: an empty autodraw_decks means no auto-draw decks ----------------------------------------
+# --- CORE-13: an empty autodraw_decks means no auto-draw decks (0.2: through the one-time seed) ---------
 
 def test_empty_autodraw_decks_draws_nothing(tmp_path, stand_in_detector):
-    """CORE-13: autodraw_decks [] still auto-drew from agent-unblock."""
+    """CORE-13: autodraw_decks [] still auto-drew from agent-unblock. 0.2: a stored [] seeds every Hermes
+    switch off once."""
     service, decks = sub("service"), sub("decks")
     store = make_store(tmp_path)
-    cat = decks.catalog(store)
-    assert service.pick_decks(cat, {"autodraw_decks": []}, context="auto") == []
-    assert [d["deck"] for d in service.pick_decks(cat, {}, context="auto")] == ["agent-unblock"]
+    assert [d["deck"] for d in service.pick_decks(decks.catalog(store), {}, context="auto")] == ["agent-unblock"]
+    service.ensure_seed(store, {"autodraw_decks": []})
+    assert service.pick_decks(decks.catalog(store), {}, context="auto") == []
     hook, store = hook_for(tmp_path, {"autodraw": True, "autodraw_decks": []})
     assert fail_calls(hook, 3) == [None, None, None]
     rows, _ = store.read_jsonl("journal", "2026-11.jsonl")
@@ -528,13 +529,15 @@ def test_no_description_sentence_over_160_characters(tmp_path, tool):
     assert len(desc) < 800
 
 
-def test_the_change_format_moved_to_the_parameter_and_the_skill(tmp_path):
-    """AGENT-D-copy: the change format lives in the changes parameter and the skill, not the description."""
+def test_the_change_format_moved_to_the_parameter_and_the_rules_to_the_refusal(tmp_path):
+    """AGENT-D-copy: the change format lives in the changes parameter, not the description. 0.2 (AX-9):
+    the card rules left the skill, so a refused preview must name the rule the card broke."""
     ctx = tool_ctx(tmp_path)
     schema = ctx.tools["unblockbruecke_decks"]["schema"]
-    assert "remove" in schema["parameters"]["properties"]["changes"]["description"]
-    skill = (pathlib.Path(sub("decks").PLUGIN_ROOT) / "skills" / "unblockbruecke" / "SKILL.md").read_text(encoding="utf-8")
-    assert "edit: [{id" in skill and "90 characters" in skill
+    assert "edit: [{id" in schema["parameters"]["properties"]["changes"]["description"]
+    out = ctx.call("unblockbruecke_decks", action="preview", deck="writing",
+                   changes={"add": [{"human": "x" * 120, "agent": "Do one small thing.", "tags": ["auto"]}]})
+    assert out["ok"] is False and "at most 90" in out["message"] and out["problems"][0]["rule"] == "length_human"
 
 
 # --- AGENT-S-plain, AGENT-S-threshold: the skill describes auto-draw as it works ---------------------------

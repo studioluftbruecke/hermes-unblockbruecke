@@ -3,9 +3,9 @@ deck: "writing"
 name: "Writing"
 by: "Studio Luftbrücke"
 license: "CC-BY-4.0"
-version: 1
+version: 2
 faces: [human, agent]
-mark: "ring"
+mark: "pencil"
 area: "writing"
 description: "Blank pages, stalled drafts and prose that will not read"
 voice: "An editor with a red pencil and a soft spot for writers who keep going."
@@ -47,3 +47,35 @@ cards:
     human: "Who is this for, by first name?"
     agent: "Ask the writer to name one real reader, then reread the draft as that person and mark the first line where they would stop reading."
     tags: [structure, human]
+  - id: "wr-09"
+    human: "Write it as a letter to one person."
+    agent: "Ask who one real reader is, then rewrite the opening as a letter to them by name. Show both versions side by side and mark the lines from the letter worth keeping."
+    tags: [structure, human]
+  - id: "wr-10"
+    human: "Cut it to six words, then grow it back."
+    agent: "Boil the piece down to six words, then rebuild it one sentence at a time from those six. Show the original and the regrown version side by side."
+    tags: [prose]
+  - id: "wr-11"
+    human: "Swap the tense and see who wakes up."
+    agent: "Rewrite one paragraph in the present tense, or in the past if it already is present. Show both and point out which lines got sharper and which went flat."
+    tags: [prose]
+  - id: "wr-12"
+    human: "Let the object tell it."
+    agent: "Pick one object in the text and retell a short passage from its point of view. Put it next to the original and name the detail the object noticed that the narrator missed."
+    tags: [draft]
+  - id: "wr-13"
+    human: "Each sentence shorter than the last."
+    agent: "Rewrite one paragraph so every sentence is shorter than the one before, ending on two or three words. Show before and after and say where the rhythm landed."
+    tags: [prose]
+  - id: "wr-14"
+    human: "Open with the last line."
+    agent: "Move the closing sentence to the very top and let the rest explain how it got there, changing as few other words as you can. Show the reordered draft beside the original."
+    tags: [structure]
+  - id: "wr-15"
+    human: "Add one sentence nobody asked for."
+    agent: "In the flattest paragraph, offer three oddly specific sentences (a smell, a price, a time of day), each shown in place. The writer keeps one or none."
+    tags: [prose, human]
+  - id: "wr-16"
+    human: "Headline first, then a whisper."
+    agent: "Restate the main point three ways: as a newspaper headline, as one spoken sentence, and as a whisper to a friend. Show all three next to the original and offer the best as a new first line."
+    tags: [start]

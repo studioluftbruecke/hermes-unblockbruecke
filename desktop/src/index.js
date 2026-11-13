@@ -1,7 +1,7 @@
 /**
- * Unblockbrücke, the Desktop half: the Unblockbrücke page (table, decks, journal) and its sidebar row
+ * Unblockbrücke, the Desktop half: the Unblockbrücke page (Draw, Hermes, Decks) and its sidebar row
  * (the shared sidebar-row module: a show switch and a position on the settings page, kept per Desktop),
- * the Draw button in the status bar behind "Show in status bar", palette rows, the rebindable "Draw a
+ * the chip in the status bar (the card of the day, and what Hermes drew), palette rows, the rebindable "Draw a
  * card" shortcut, the `card` transcript directive, and the plugin's settings page. Source of
  * desktop/plugin.js, built by desktop/build/build.mjs.
  *
@@ -26,7 +26,7 @@ export const DRAW_DEFAULT_KEYS = ['mod+alt+u']
 export default {
   id: ID,
   name: NAME,
-  description: 'Decks of short original cards that get humans and agents unstuck: a Draw button in the status bar, a card table, your own decks, a journal of what helped.',
+  description: 'Cards to unblock yourself or your agent, drawn by you when you are stuck and by Hermes when its tool calls keep failing.',
   register(ctx) {
     setCtx(ctx)
     ctx.onDispose(installStyle())
@@ -34,7 +34,7 @@ export default {
     ctx.register({ id: 'directive-card', area: TRANSCRIPT_DIRECTIVE_AREA, data: { name: 'card', render: props => jsx(CardDirective, props) } })
     ctx.register({ id: 'draw-key', area: KEYBINDS_AREA, data: { id: DRAW_ACTION, label: 'Unblockbrücke: Draw a card', category: 'view', defaults: DRAW_DEFAULT_KEYS, run: () => drawCard() } })
     if (typeof ctx.registerSettingsPage === 'function') {
-      ctx.registerSettingsPage({ id: 'cards', title: 'Unblockbrücke', icon: 'layers', render: () => jsx(SettingsPage, {}) })
+      ctx.registerSettingsPage({ id: 'cards', title: 'Unblockbrücke', icon: 'copy', render: () => jsx(SettingsPage, {}) })
     }
     registerPalette(ctx)
     startVisibility(ctx)
@@ -42,6 +42,6 @@ export default {
       disposePalette()
       stopVisibility()
     })
-    log('registered page, card directive, keybind mod+alt+u, settings page, palette rows, sidebar row; Draw button follows show_in_statusbar')
+    log('registered page, card directive, keybind mod+alt+u, settings page, palette rows, sidebar row, status bar chip')
   },
 }

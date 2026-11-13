@@ -1,11 +1,11 @@
 schema: 1
 deck: "human-unblock"
-name: "Human unblock"
+name: "Human"
 by: "Studio Luftbrücke"
 license: "CC-BY-4.0"
-version: 1
+version: 2
 faces: [human, agent]
-mark: "circle"
+mark: "person"
 description: "Creative and work blocks: small moves to get a person going again"
 voice: "A friend in the studio who hands you a coffee and one small, slightly odd thing to try."
 glossary:
@@ -115,3 +115,19 @@ cards:
     human: "Argue for the option you're dodging."
     agent: "When the user is torn between two options, ask them to argue for the one they lean against for one minute, then ask which argument surprised them."
     tags: [clarity, human]
+  - id: "hu-25"
+    human: "Try three other endings."
+    agent: "Ask the user how the work ends now, propose three surprising other endings, and help them try the one they smile at for ten minutes."
+    tags: [lateral, human]
+  - id: "hu-26"
+    human: "Break one rule you never question."
+    agent: "Ask the user which rule the work follows without thinking, flip it for a ten-minute variation, and compare it with the original together."
+    tags: [lateral, human]
+  - id: "hu-27"
+    human: "Add a limit you'd never pick."
+    agent: "Ask the user for a limit (one colour, 10,000 hours, no letter e), apply it to one small part of the work, and look together at what the limit made them invent."
+    tags: [lateral, human]
+  - id: "hu-28"
+    human: "Sketch the sequel."
+    agent: "Ask the user what part two of this work would be, sketch it with them for ten minutes, then bring back the one idea from the sequel that belongs in the original."
+    tags: [lateral, human]

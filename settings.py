@@ -4,10 +4,15 @@
 `DEFAULTS` below, and numbers are clamped here. `tests/test_autodraw.py` checks `DEFAULTS` against
 `plugin.yaml`. Settings are read on every call (Q5: a `config set` applies on the next tool call).
 
-`RETIRED` keys left `config_schema` (Hermes' settings form) but are still read and answered by
-`GET /settings`, read-only. `show_in_sidebar` (0.1.4, sidebar rows D4): the sidebar switch moved to
-the Desktop (per computer, ctx.storage), and a Desktop with no stored choice seeds it once from this
-answer (V5), so the old value must stay readable after both halves update together.
+`RETIRED` keys left `config_schema` (Hermes' settings form) but are still read:
+- `show_in_sidebar` (0.1.4, sidebar rows D4): the sidebar switch moved to the Desktop (per computer,
+  ctx.storage), and a Desktop with no stored choice seeds it once from `GET /settings` (V5), so the old
+  value stays readable there.
+- `autodraw_decks` (0.2, AX-6): each deck's Hermes switch decides. A stored list seeds those switches
+  once (`decks.seed_hermes_switches`); no answer shows it.
+`autodraw_per_turn` (0.2, AX-8) is gone: one card per turn, always.
+
+`SETTABLE`: the keys the page may write through `POST /setting` (R10: five keys, no secret).
 """
 from __future__ import annotations
 
@@ -16,17 +21,18 @@ from typing import Any, Callable
 DEFAULTS: dict[str, Any] = {
     "autodraw": False,
     "autodraw_threshold": 3,
-    "autodraw_per_turn": 1,
-    "autodraw_decks": ["agent-unblock"],
     "card_of_day": True,
     "learning": True,
-    "show_in_sidebar": True,
     "show_in_statusbar": True,
+    "show_in_sidebar": True,
+    "autodraw_decks": ["agent-unblock"],
 }
 
-RETIRED = frozenset({"show_in_sidebar"})
+RETIRED = frozenset({"show_in_sidebar", "autodraw_decks"})
+HIDDEN = frozenset({"autodraw_decks"})  # read for the one-time seed, never answered
+SETTABLE = ("autodraw", "autodraw_threshold", "card_of_day", "learning", "show_in_statusbar")
 
-RANGES = {"autodraw_threshold": (2, 6), "autodraw_per_turn": (1, 3)}
+RANGES = {"autodraw_threshold": (2, 6)}
 
 
 def as_bool(value: Any, default: bool) -> bool:
@@ -76,6 +82,26 @@ def read(get: Callable[[str, Any], Any]) -> dict:
         else:
             out[key] = value
     return out
+
+
+def public(settings: dict) -> dict:
+    """The settings an answer shows: every key but the hidden legacy ones."""
+    return {k: v for k, v in settings.items() if k not in HIDDEN}
+
+
+def check_value(key: str, value: Any) -> Any:
+    """The value `POST /setting` may save for `key`, or ValueError. No clamping: a value out of range is
+    refused, so the page never shows one number while another is saved."""
+    if key not in SETTABLE:
+        raise KeyError(key)
+    if key in RANGES:
+        lo, hi = RANGES[key]
+        if isinstance(value, bool) or not isinstance(value, int) or not lo <= value <= hi:
+            raise ValueError(f"{key} must be a whole number from {lo} to {hi}")
+        return value
+    if not isinstance(value, bool):
+        raise ValueError(f"{key} must be true or false")
+    return value
 
 
 def read_from_config_file(home_config: Any) -> dict:

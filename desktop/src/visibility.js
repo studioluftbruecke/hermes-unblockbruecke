@@ -94,7 +94,7 @@ export async function readVisibility() {
 export function startVisibility(ctx) {
   ctxRef = ctx
   seedPending = !hasStoredChoice()
-  row = startSidebarRow(ctx, { brand: 'Unblockbrücke', path: PATH, codicon: 'layers', defaultPosition: 53, sdk: SIDEBAR_SDK })
+  row = startSidebarRow(ctx, { brand: 'Unblockbrücke', path: PATH, codicon: 'copy', defaultPosition: 53, sdk: SIDEBAR_SDK })
   applyBar(storage.get(STORED, true) !== false)
   readVisibility()
   if (typeof ctx.setInterval === 'function') ctx.setInterval(readVisibility, POLL_MS)

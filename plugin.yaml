@@ -1,5 +1,5 @@
 name: unblockbruecke
-version: "0.1.4"
+version: "0.2.0"
 description: "Cards to unblock yourself or your agent, drawn by you when you are stuck and by Hermes when its tool calls keep failing. Original decks, your own decks, local files, no account."
 author: "Studio Luftbrücke"
 license: MIT
@@ -9,39 +9,30 @@ provides_tools:
   - unblockbruecke_decks
 provides_hooks:
   - transform_tool_result
+  - transform_llm_output
 config_schema:
   autodraw:
     type: boolean
     default: false
     label: "Hermes draws when stuck"
-    description: "Off by default. After 3 failed tool calls in a row in one turn, the failing result carries one card with a next move. The call still fails."
+    description: "After 3 failed tool calls out of the last 5, Hermes gets one card with a next move. The call still counts as failed."
   autodraw_threshold:
     type: integer
     default: 3
-    label: "Failed tool calls in a row"
-    description: "How many failed tool calls in a row, in one turn and across any tools, bring a card (2 to 6). A successful call starts the count again."
-  autodraw_per_turn:
-    type: integer
-    default: 1
-    label: "Cards per turn at most"
-    description: "At most this many auto-drawn cards in one turn (1 to 3)."
-  autodraw_decks:
-    type: list
-    default: ["agent-unblock"]
-    label: "Decks Hermes may draw from"
-    description: "Deck names, e.g. [\"agent-unblock\"]. A deck counts only while its Auto switch is on (Unblockbrücke page, Decks); imported decks start off."
+    label: "Failed calls before a card"
+    description: "How many failed calls bring a card (2 to 6), counted over the last few calls of a turn."
   card_of_day:
     type: boolean
     default: true
     label: "Card of the day"
-    description: "One card for you each day, shown in the Draw popover before you draw."
+    description: "One card for you each day in the status bar."
   learning:
     type: boolean
     default: true
     label: "Decks learn"
-    description: "Cards you rated as helpful come up a little more often; none disappears. Reset on the Unblockbrücke page, Journal."
+    description: "Cards you mark as helped come up a little more often. None disappears."
   show_in_statusbar:
     type: boolean
     default: true
     label: "Show in status bar"
-    description: "Shows the Draw button in the status bar. When off, draw from the page, the command palette or the shortcut."
+    description: "Shows the chip with the card of the day in the status bar. When off, draw from the page, the command palette or the shortcut."

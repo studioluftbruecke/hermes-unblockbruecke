@@ -1,5 +1,6 @@
-"""The Draw button and its popover (PLAN-v0.1.3 M2: A17 to A19, A22, P1 to P3), driven in node through
-the stand-ins in test_ui_review.py (same renderer, same `ctx.rest` fake, same deck data).
+"""The chip in the status bar and its popover (PLAN-v0.2 M3, sketch A), the pressed deck chip the
+shortcut and Another draw from, and "Pass it to Hermes", driven in node through the stand-ins in
+test_ui_review.py (same renderer, same `ctx.rest` fake, same deck data).
 
 Skipped without node and desktop/build/node_modules, like test_ui_review.py.
 """
@@ -13,127 +14,104 @@ pytestmark = pytest.mark.skipif(not NODE or not (MODULES / "esbuild").is_dir(),
 POPOVER = """
 import { Chip } from '@src/chip.js'
 import { setCtx } from '@src/core.js'
-import { $popCard, $popDeck, $popOpen } from '@src/state.js'
+import { $popCard, $popOpen } from '@src/state.js'
 import { jsx } from 'react/jsx-runtime'
 import { fakeCtx, setAnswer, rests, mount, all, text, button, host, queryClient } from './helpers.js'
 import { DECKS, CARD, K } from './data.js'
 const ctx = fakeCtx()
 setCtx(ctx)
-setAnswer((m, p, b) => (m === 'POST' && p === '/draw' ? { ok: true, schema: 1, card: { ...CARD, deck: b.deck || 'writing' }, draw_id: 'd-' + rests.length } : { ok: true, schema: 1 }))
+const drafts = []
+host.composer = { getDraft: async () => '', setDraft: async (a, t) => { drafts.push(t); return true }, submit: () => { drafts.push('SUBMIT') } }
+setAnswer((m, p, b) => (m === 'POST' && p === '/draw' ? { ok: true, schema: 1, card: { ...CARD, deck: b.deck || 'any' }, draw_id: 'd-' + rests.length } : { ok: true, schema: 1 }))
 queryClient.setQueryData(K('decks'), DECKS)
 queryClient.setQueryData(K('today'), { ok: true, schema: 1, enabled: true, date: '2026-11-11', card: CARD })
 const pop = tree => all(tree, n => n.props['data-ubk'] === 'popover')[0]
-const labels = tree => all(pop(tree), n => n.type === 'button' && !n.props['data-deck'] && n.props['data-ubk'] !== 'today').map(text)
-const chips = tree => all(pop(tree), n => n.props['data-deck']).map(n => [n.props['data-deck'], !!n.props['aria-pressed']])
+const labels = tree => all(pop(tree), n => n.type === 'button').map(text)
 """
 
+LINE = "Read the error as a stranger."
 
-def test_the_button_says_draw_and_names_the_product_for_screen_readers(tmp_path):
-    """A17: the visible text is exactly "Draw" next to an icon; the tooltip says "Draw a card"; the
-    accessible name carries the product name. Neither names the shortcut (RV5)."""
+
+def test_the_chip_carries_the_card_of_the_day_and_names_the_product_for_screen_readers(tmp_path):
+    """0.2: the chip is the icon and the card of the day's line; without a card of the day it says Draw.
+    The accessible name carries the product name; nothing names the shortcut."""
     out = run_js(tmp_path, POPOVER + """
-        const chip = all(mount(jsx(Chip, {})).tree, n => n.props['data-ubk'] === 'chip')[0]
-        console.log(JSON.stringify({ text: text(chip), title: chip.props.title, aria: chip.props['aria-label'], svg: all(chip, n => n.type === 'svg').length }))
+        const look = () => { const chip = all(mount(jsx(Chip, {})).tree, n => n.props['data-ubk'] === 'chip')[0]
+          return { text: text(chip), title: chip.props.title, aria: chip.props['aria-label'], svg: all(chip, n => n.type === 'svg').length } }
+        const day = look()
+        queryClient.setQueryData(K('today'), { ok: true, schema: 1, enabled: false, date: '2026-11-11', card: null })
+        console.log(JSON.stringify({ day, off: look() }))
     """)
-    assert out == {"text": "Draw", "title": "Draw a card", "aria": "Unblockbrücke: draw a card", "svg": 1}, out
+    assert out["day"] == {"text": LINE, "title": f"Card of the day: {LINE}", "aria": f"Unblockbrücke, card of the day: {LINE}", "svg": 1}, out
+    assert out["off"] == {"text": "Draw", "title": "Draw a card", "aria": "Unblockbrücke, draw a card", "svg": 1}, out
 
 
-def test_popover_before_a_draw_then_after_it(tmp_path):
-    """A18, P1, P2: before a draw the popover shows the drawable decks as chips with the default
-    selected, the Today line and Draw. Draw sends that deck, saves it as this profile's last deck and
-    turns the popover into the card with Use in chat, Draw another and the page link; Ask Hermes and
-    Show agent face stay on the page only. A chip after a draw draws from that deck at once."""
+def test_popover_card_of_the_day_another_and_pass_it_to_hermes(tmp_path):
+    """Sketch A: the popover holds the card, "Pass it to Hermes", "Another" and the page link (three
+    controls). Another draws from the pressed chip of this profile and shows that card; "Pass it to
+    Hermes" drafts both faces and the directive line, never sends, and closes the popover."""
     out = run_js(tmp_path, POPOVER + """
         host.state.focusedSessionProfile.set('coding')
+        ctx.storage.set('pressed:coding', 'writing')
         $popOpen.set(true)
         const view = mount(jsx(Chip, {}))
-        const res = { before: { state: pop(view.tree).props['data-state'], chips: chips(view.tree), labels: labels(view.tree) } }
-        button(pop(view.tree), /^Draw$/).props.onClick()
+        const res = { day: { state: pop(view.tree).props['data-state'], labels: labels(view.tree), cards: all(pop(view.tree), n => n.props['data-card']).map(n => [n.props['data-card'], n.props['data-face'], n.props.role || null]) } }
+        button(pop(view.tree), /^Another$/).props.onClick()
         await view.settle()
         const t = view.render()
-        res.after = { state: pop(t).props['data-state'], labels: labels(t), cards: all(pop(t), n => n.props['data-card']).length, hint: text(all(pop(t), n => n.props.className === 'hint')) }
-        res.sent = rests.filter(([m, p]) => p === '/draw').map(r => r[2].deck)
-        res.saved = ctx.storage.get('deck:coding', null)
-        all(pop(t), n => n.props['data-deck'] === 'writing')[0].props.onClick()
+        res.after = { state: pop(t).props['data-state'], labels: labels(t), sent: rests.filter(([m, p]) => p === '/draw').map(r => r[2].deck) }
+        button(pop(t), /^Pass it to Hermes$/).props.onClick()
         await view.settle()
-        res.chipDraw = { sent: rests.filter(([m, p]) => p === '/draw').map(r => r[2].deck), saved: ctx.storage.get('deck:coding', null), picked: $popDeck.get() }
-        button(pop(view.render()), /^Draw another$/).props.onClick()
-        await view.settle()
-        res.another = rests.filter(([m, p]) => p === '/draw').map(r => r[2].deck)
+        res.drafts = drafts
+        res.open = $popOpen.get()
         console.log(JSON.stringify(res))
     """)
-    assert out["before"]["state"] == "before"
-    assert out["before"]["chips"] == [["agent-unblock", False], ["coding", True], ["writing", False], ["night-shift", False], ["mine", False]], out
-    assert out["before"]["labels"] == ["Draw", "Open Unblockbrücke"], out
-    assert out["after"]["state"] == "after" and out["after"]["cards"] == 1, out
-    assert out["after"]["labels"] == ["Use in chat", "Draw another", "Open Unblockbrücke"], out
-    assert out["after"]["hint"] == "Click to turn"
-    assert out["sent"] == ["coding"] and out["saved"] == "coding", out
-    assert out["chipDraw"] == {"sent": ["coding", "writing"], "saved": "writing", "picked": "writing"}, out
-    assert out["another"] == ["coding", "writing", "writing"], out
+    assert out["day"] == {"state": "day", "labels": ["Pass it to Hermes", "Another", "Open Unblockbrücke"], "cards": [["coding/co-03", "front", None]]}, out["day"]
+    assert out["after"] == {"state": "drawn", "labels": ["Pass it to Hermes", "Another", "Open Unblockbrücke"], "sent": ["writing"]}, out["after"]
+    assert out["drafts"] == ['::card{deck="coding" id="co-03"}\nI drew "Read the error as a stranger." (Coding).\nFor Hermes: Quote the exact error line, then list two readings.'], out["drafts"]
+    assert out["open"] is False
 
 
-def test_today_line_follows_the_card_of_the_day_setting(tmp_path):
-    """A19: with card_of_day off (GET /today enabled false) the popover has no Today line."""
+def test_with_card_of_the_day_off_the_popover_offers_draw(tmp_path):
+    """card_of_day off and nothing drawn: the popover shows the card back, Draw and the page link."""
     out = run_js(tmp_path, POPOVER + """
-        $popOpen.set(true)
-        const on = all(mount(jsx(Chip, {})).tree, n => n.props['data-ubk'] === 'today').map(text)
         queryClient.setQueryData(K('today'), { ok: true, schema: 1, enabled: false, date: '2026-11-11', card: null })
-        const off = all(mount(jsx(Chip, {})).tree, n => n.props['data-ubk'] === 'today').map(text)
-        console.log(JSON.stringify({ on, off }))
-    """)
-    assert out == {"on": ["Today: Read the error as a stranger."], "off": []}, out
-
-
-def test_default_deck_order(tmp_path):
-    """P1: last deck while drawable, then the profile match (exact, plural, singular), then Human
-    unblock, else any deck. A host without focusedSessionProfile still answers (P-PROF)."""
-    out = run_js(tmp_path, """
-        import { currentProfile, defaultDeck } from '@src/state.js'
-        import { host } from './helpers.js'
-        const on = slug => ({ deck: slug, name: slug, switch: { draw: true, auto: false } })
-        const off = slug => ({ deck: slug, name: slug, switch: { draw: false, auto: false } })
-        const decks = [on('human-unblock'), on('coding'), on('shaders'), on('design'), on('writing'), off('night-shift')]
-        const res = {
-          lastWins: defaultDeck({ decks, profile: 'coding', last: 'writing' }),
-          lastOff: defaultDeck({ decks, profile: 'coding', last: 'night-shift' }),
-          lastGone: defaultDeck({ decks, profile: 'coding', last: 'no-such' }),
-          coding: defaultDeck({ decks, profile: 'coding', last: '' }),
-          shader: defaultDeck({ decks, profile: 'shader', last: '' }),
-          designs: defaultDeck({ decks, profile: 'designs', last: '' }),
-          nomatch: defaultDeck({ decks, profile: 'default', last: '' }),
-          noHuman: defaultDeck({ decks: decks.filter(d => d.deck !== 'human-unblock'), profile: 'default', last: '' }) ?? null,
-          none: defaultDeck({ decks: [], profile: 'coding', last: 'coding' }) ?? null,
-        }
-        host.state.focusedSessionProfile.set('shaders')
-        res.focused = currentProfile()
-        host.state.focusedSessionProfile.set(null)
-        res.unfocused = currentProfile()
-        delete host.state.focusedSessionProfile
-        res.oldHost = currentProfile()
-        host.state.profile.set(null)
-        res.bare = currentProfile()
+        $popOpen.set(true)
+        const view = mount(jsx(Chip, {}))
+        const res = { state: pop(view.tree).props['data-state'], labels: labels(view.tree) }
+        button(pop(view.tree), /^Draw$/).props.onClick()
+        await view.settle()
+        res.after = pop(view.render()).props['data-state']
         console.log(JSON.stringify(res))
     """)
-    assert out == {"lastWins": "writing", "lastOff": "coding", "lastGone": "coding", "coding": "coding", "shader": "shaders",
-                   "designs": "design", "nomatch": "human-unblock", "noHuman": None, "none": None,
-                   "focused": "shaders", "unfocused": "test", "oldHost": "test", "bare": "default"}, out
+    assert out == {"state": "empty", "labels": ["Draw", "Open Unblockbrücke"], "after": "drawn"}, out
 
 
-def test_old_deck_key_is_not_carried_over(tmp_path):
-    """A22: a 0.1.2 value in `deck` and an empty `deck:coding` leave a coding chat on Coding."""
-    out = run_js(tmp_path, POPOVER + """
-        ctx.storage.set('deck', 'writing')
-        host.state.focusedSessionProfile.set('coding')
-        $popOpen.set(true)
-        console.log(JSON.stringify({ chips: chips(mount(jsx(Chip, {})).tree).filter(c => c[1]).map(c => c[0]) }))
+def test_the_pressed_chip_starts_on_human_and_falls_back_to_all(tmp_path):
+    """His rule: Human on a first run; exactly one chip pressed. A deck list without Human starts on All;
+    0.1's `deck` and `deck:<profile>` keys are not carried over."""
+    out = run_js(tmp_path, """
+        import { ALL, chipList, pressedChip } from '@src/state.js'
+        import { DECKS } from './data.js'
+        const human = { deck: 'human-unblock', name: 'Human', source: 'shipped', cards: 24, switch: { draw: true, auto: false } }
+        const own = { deck: 'human-unblock-own', name: 'Human', source: 'own', copy_of: 'human-unblock', cards: 25, switch: { draw: true, auto: false } }
+        const withHuman = [...DECKS.decks, human]
+        const shadowed = [...DECKS.decks, { ...human, shadowed_by: 'human-unblock-own' }, own]
+        console.log(JSON.stringify({
+          first: pressedChip(withHuman, ''), stored: pressedChip(withHuman, 'coding'), all: pressedChip(withHuman, ALL), gone: pressedChip(withHuman, 'nope'),
+          noHuman: pressedChip(DECKS.decks, ''), ownCopy: pressedChip(shadowed, ''),
+          order: chipList(withHuman).map(c => c.name), ownOrder: chipList(shadowed).map(c => c.key),
+        }))
     """)
-    assert out == {"chips": ["coding"]}, out
+    assert out["first"] == "human-unblock" and out["stored"] == "coding" and out["all"] == "all" and out["gone"] == "human-unblock", out
+    assert out["noHuman"] == "all" and out["ownCopy"] == "human-unblock-own", out
+    assert out["order"] == ["Human", "Coding", "Writing", "Agent unblock", "Mine", "Night shift", "All"], out
+    assert out["ownOrder"][0] == "human-unblock-own", out
 
 
-def test_a_popover_draw_with_the_button_hidden_opens_the_page(tmp_path):
-    """A draw meant for the popover (palette, shortcut, away from the page) while the Draw button is
-    not mounted puts the card on the page's table and navigates there; no popover opens."""
+def test_a_popover_draw_with_the_chip_hidden_opens_the_page(tmp_path):
+    """A draw meant for the popover (palette, shortcut, away from the page) while the chip is not
+    mounted puts the card on the page's table and navigates there; no popover opens."""
     out = run_js(tmp_path, POPOVER + """
         import { $table, drawCard, setChipMounted } from '@src/state.js'
         globalThis.window.location.hash = '#/chat'

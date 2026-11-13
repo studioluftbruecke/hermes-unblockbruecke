@@ -31,16 +31,34 @@ def _version() -> str:
 
 VERSION = _version()
 
+def _save_setting(key: str, value: Any) -> None:
+    """Hermes' own writer for one plugin setting (the profile's config.yaml, under its lock); raises
+    PermissionError where Hermes refuses (managed install, administrator-managed key)."""
+    from hermes_cli.plugins_state import save_plugin_setting
+
+    save_plugin_setting("unblockbruecke", (key,), value)
+
+
 # Tests point these at a temp folder and fixed settings; in Hermes they follow the bound home per call.
 _store_factory: Callable[[], Store] = lambda: Store(lambda: default_root())  # noqa: E731
 _settings_factory: Callable[[], dict] = settings_mod.load_route_settings
+_setting_saver: Callable[[str, Any], None] = _save_setting
+_unattended: Callable[[], Optional[str]] = bridge.route_unattended
 
 
 def configure(store_factory: Optional[Callable[[], Store]] = None,
-              settings_factory: Optional[Callable[[], dict]] = None) -> None:
-    global _store_factory, _settings_factory
+              settings_factory: Optional[Callable[[], dict]] = None,
+              setting_saver: Optional[Callable[[str, Any], None]] = None,
+              unattended: Optional[Callable[[], Optional[str]]] = None) -> None:
+    global _store_factory, _settings_factory, _setting_saver, _unattended
     _store_factory = store_factory or (lambda: Store(lambda: default_root()))
     _settings_factory = settings_factory or settings_mod.load_route_settings
+    _setting_saver = setting_saver or _save_setting
+    _unattended = unattended or bridge.route_unattended
+
+
+def _seeded(s: Store, st: dict) -> None:
+    service.ensure_seed(s, st)
 
 
 def store() -> Store:
@@ -155,16 +173,19 @@ def health() -> "tuple[int, dict]":
 
 @_guard
 def decks_get() -> "tuple[int, dict]":
-    cat = decks_mod.catalog(store())
-    st = _settings_factory()
+    s, st = store(), _settings_factory()
+    _seeded(s, st)
+    cat = decks_mod.catalog(s)
     rows = [decks_mod.deck_summary(d) for d in sorted(cat["decks"].values(), key=lambda d: (d["source"] != "shipped", d["deck"]))]
     return ok({"decks": rows, "broken": cat["broken"],
-               "autodraw": {"on": st["autodraw"], "decks": st["autodraw_decks"], "threshold": st["autodraw_threshold"]}})
+               "autodraw": {"on": st["autodraw"], "decks": [d["deck"] for d in decks_mod.hermes_decks(cat)],
+                            "threshold": st["autodraw_threshold"]}})
 
 
 @_guard
 def deck_get(slug: str) -> "tuple[int, dict]":
     s = store()
+    _seeded(s, _settings_factory())
     cat = decks_mod.catalog(s)
     deck = cat["decks"].get(slug)
     if deck is None:
@@ -178,6 +199,7 @@ def deck_get(slug: str) -> "tuple[int, dict]":
                     for c in deck["cards"]]
     out["editable"] = deck["source"] in ("own", "imported")
     out["edits_save_as"] = editor.target_for(cat, slug)[0]
+    out["saves_at_once"] = editor.saves_at_once(cat, slug)
     return ok({"deck": out})
 
 
@@ -190,6 +212,8 @@ def today() -> "tuple[int, dict]":
 
 @_guard
 def journal_get(limit: Any = 50, by: str = "", session: str = "") -> "tuple[int, dict]":
+    if by not in ("", "user", "agent", "auto", "hermes"):
+        raise ValueError("by must be user, agent, auto or hermes")
     try:
         limit = max(1, min(200, int(limit or 50)))
     except (TypeError, ValueError, OverflowError):
@@ -220,9 +244,58 @@ def export(slug: str) -> "tuple[int, dict]":
     return ok(out)
 
 
+SUMMARY_KEYS = ("deck", "name", "mark", "source", "switch", "cards", "auto_cards", "shadowed_by", "copy_of")
+
+
+def _settings_body() -> dict:
+    """GET /settings (contract 0.2 § 2): the settings, the keys the page may write, each deck's two
+    switches, the decks Hermes draws from now and the example card under the switch."""
+    s, st = store(), _settings_factory()
+    _seeded(s, st)
+    cat = decks_mod.catalog(s)
+    rows = []
+    for d in sorted(cat["decks"].values(), key=lambda d: (d["source"] != "shipped", d["deck"])):
+        summary = decks_mod.deck_summary(d)
+        rows.append({k: summary[k] for k in SUMMARY_KEYS if k in summary})
+    return {"settings": settings_mod.public(st), "settable": list(settings_mod.SETTABLE),
+            "ranges": {k: list(v) for k, v in settings_mod.RANGES.items()},
+            "decks": rows,
+            "hermes": {"decks": [d["deck"] for d in decks_mod.hermes_decks(cat)],
+                       "example": service.hermes_example(s, cat)}}
+
+
 @_guard
 def settings_get() -> "tuple[int, dict]":
-    return ok({"settings": _settings_factory()})
+    return ok(_settings_body())
+
+
+@_guard
+def setting_set(body: Any) -> "tuple[int, dict]":
+    """POST /setting (R10): one of five keys, a person's click only. Saved through Hermes' writer."""
+    body = _body(body)
+    key = body.get("key")
+    if key not in settings_mod.SETTABLE:
+        return fail(400, "unknown_setting", "This page saves only " + ", ".join(settings_mod.SETTABLE[:-1]) + " and "
+                    + settings_mod.SETTABLE[-1] + ".", settable=list(settings_mod.SETTABLE))
+    value = settings_mod.check_value(key, body.get("value"))  # ValueError: 400 invalid
+    reason = _unattended()
+    if reason:
+        return fail(403, "unattended", f"Refused: a setting is a person's choice, and this run has no person at the "
+                                       f"keyboard ({reason}). Nothing was changed.")
+    s = store()
+
+    def run():
+        try:
+            _setting_saver(key, value)
+        except PermissionError as exc:
+            return fail(403, "not_allowed", str(exc) or "Hermes does not allow changing this setting here.")
+        except ImportError:
+            return fail(501, "not_supported", "This Hermes cannot save a setting from a page. Set it in Hermes' settings.")
+        except Exception as exc:  # noqa: BLE001 - the page needs a code, the log keeps the rest
+            log.info("unblockbruecke: saving %s failed: %r", key, exc)
+            return fail(500, "save_failed", f"The setting was not saved ({type(exc).__name__}).")
+        return ok({**_settings_body(), "saved": {"key": key, "value": value}})
+    return _once(s, body, run)
 
 
 # --- writes ---------------------------------------------------------------------------------------
@@ -282,7 +355,7 @@ def save(slug: str, body: Any) -> "tuple[int, dict]":
 
     def run():
         out = editor.save(s, slug, str(body.get("confirm") or ""), "user", body.get("content"), changes,
-                          replace=bool(body.get("replace")))
+                          replace=bool(body.get("replace")), at_once=True)
         out.pop("ok", None)
         return ok(out)
     return _once(s, body, run)
@@ -342,6 +415,7 @@ def switch(body: Any) -> "tuple[int, dict]":
             raise ValueError(f"{key} must be true or false")
 
     def run():
+        _seeded(s, _settings_factory())
         if slug not in decks_mod.catalog(s)["decks"]:
             return fail(404, "unknown_deck", f"no deck named {slug}")
         decks_mod.set_switch(s, slug, draw=body.get("draw"), auto=body.get("auto"))

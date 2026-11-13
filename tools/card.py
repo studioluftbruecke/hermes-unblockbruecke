@@ -58,10 +58,11 @@ def _draw(args: dict, rt) -> dict:
     # Only a card the agent takes for itself (stuck) must not ask a person who is not there (F7);
     # a card drawn for a person (human, break, any) is read by that person later.
     skip_human = bool(reason) and context == "stuck"
+    where, platform = rt.where() if rt.author == "agent" else ("", "")
     try:
         out = service.draw_card(rt.store, rt.settings, deck=args.get("deck") or None, decks=args.get("decks") or None,
                                 context=context, tags=args.get("tags") or None, by=rt.author,
-                                unattended=skip_human, session_id=rt.session_id)
+                                unattended=skip_human, session_id=rt.session_id, where=where, platform=platform)
     except LookupError as exc:
         return {"ok": False, "error": "unknown_deck", "message": str(exc)}
     except ValueError as exc:  # a wrong argument type (deck, decks, tags)
@@ -83,7 +84,7 @@ def _decks(args: dict, rt) -> dict:
     cat = decks_mod.catalog(rt.store)
     rows = [decks_mod.deck_summary(d) for d in sorted(cat["decks"].values(), key=lambda d: d["deck"])]
     out = {"ok": True, "decks": rows, "autodraw": {"on": rt.settings.get("autodraw", False),
-                                                   "decks": rt.settings.get("autodraw_decks", [])}}
+                                                   "decks": [d["deck"] for d in decks_mod.hermes_decks(cat)]}}
     if cat["broken"]:
         out["broken"] = cat["broken"]
     return out

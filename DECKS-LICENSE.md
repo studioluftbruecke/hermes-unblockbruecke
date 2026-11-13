@@ -4,7 +4,7 @@ The plugin's code is MIT (`LICENSE`). The card texts are prose, so they carry th
 
 ## Shipped decks
 
-The six decks in `data/decks/` (Agent unblock, Human unblock, Coding, Design, Shaders, Writing) are
+The six decks in `data/decks/` (Agent, Human, Coding, Design, Shaders, Writing) are
 by Studio Luftbrücke and licensed under
 [Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/).
 You may share and adapt them for any purpose, including commercially, if you credit

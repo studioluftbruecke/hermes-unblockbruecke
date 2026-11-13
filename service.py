@@ -50,9 +50,8 @@ def pick_decks(cat: dict, settings: dict, deck: Optional[str] = None, decks: Opt
             raise LookupError(f"no deck named {echo(missing)}; decks: {known}")
         return found
     if context == "auto":
-        # An empty list means no deck for auto-draw; only a missing setting falls back to the default.
-        auto_names = settings.get("autodraw_decks", [AGENT_DECK])
-        return decks_mod.drawable(cat, auto_names, for_auto=True) if auto_names else []
+        # 0.2: each deck's Hermes switch decides (seeded once from a stored autodraw_decks).
+        return decks_mod.hermes_decks(cat)
     on = decks_mod.drawable(cat)
     preferred = {"break": HUMAN_DECK, "human": HUMAN_DECK, "stuck": AGENT_DECK}.get(context)
     if preferred:
@@ -60,6 +59,26 @@ def pick_decks(cat: dict, settings: dict, deck: Optional[str] = None, decks: Opt
         if chosen:
             return chosen
     return on
+
+
+def ensure_seed(store: Store, settings: dict) -> None:
+    """The one-time seed of the Hermes switches from 0.1's `autodraw_decks` (see decks.seed_hermes_switches).
+    Cheap after the first call: one read of the switches file."""
+    decks_mod.seed_hermes_switches(store, settings.get("autodraw_decks", [AGENT_DECK]))
+
+
+def hermes_example(store: Store, cat: Optional[dict] = None) -> Optional[dict]:
+    """The example card under the Hermes switch: today's `auto` card of the first deck Hermes draws from
+    (else the Agent deck), the same all day. None when no deck has an `auto` card."""
+    cat = cat or decks_mod.catalog(store)
+    decks = sorted(decks_mod.hermes_decks(cat), key=lambda d: (d["deck"] != AGENT_DECK, d["deck"]))
+    agent = decks_mod.resolve(cat, AGENT_DECK)
+    for deck in decks + ([agent] if agent else []):
+        cards = [c for c in deck.get("cards") or [] if "auto" in c["tags"]]
+        if cards:
+            picked = draw_mod.card_of_day({**deck, "cards": cards}, bridge.today(), salt="hermes")
+            return draw_mod.card_view(deck, picked["card"], "agent")
+    return None
 
 
 def learned_weights(store: Store, settings: dict, all_rows: Optional[list] = None) -> dict:
@@ -73,20 +92,23 @@ def draw_card(store: Store, settings: dict, *, deck: Optional[str] = None, decks
               context: str = "any", tags: Optional[list] = None, by: str = "user", unattended: bool = False,
               session_id: str = "", turn_id: str = "", tool: str = "", streak: Optional[int] = None,
               attached: Optional[bool] = None, face: Optional[str] = None, record: bool = True,
-              rng: Any = None, cat: Optional[dict] = None) -> dict:
+              rng: Any = None, cat: Optional[dict] = None, prefer: Optional[list] = None, where: str = "",
+              platform: str = "") -> dict:
+    ensure_seed(store, settings)
     cat = cat or decks_mod.catalog(store)
     tags = as_names(tags, "tags")
     chosen = pick_decks(cat, settings, deck, decks, context)
     all_rows = journal.rows(store)  # read once: recent draws and weights both come from it
     picked = draw_mod.draw(chosen, context=context, tags=tags, unattended=unattended,
                            recent=journal.recent_from(all_rows), weights=learned_weights(store, settings, all_rows),
-                           rng=rng)
+                           rng=rng, prefer=prefer)
     face = face if face in ("human", "agent") else picked["face"]
     view = draw_mod.card_view(picked["deck"], picked["card"], face)
     out: dict = {"card": view}
     if record:
         row = journal.record_draw(store, by=by, deck=view["deck"], card=view["id"], face=face, context=context,
-                                  session_id=session_id, turn_id=turn_id, tool=tool, streak=streak, attached=attached)
+                                  session_id=session_id, turn_id=turn_id, tool=tool, streak=streak, attached=attached,
+                                  where=where, platform=platform)
         out["draw_id"] = row["draw_id"]
     return out
 

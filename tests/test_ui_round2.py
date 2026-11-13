@@ -28,13 +28,14 @@ def test_new_deck_draft_survives_typing_a_taken_name_letter_by_letter(tmp_path):
         for (const name of ['Z', 'Zebra', 'Codi', 'Coding', 'Coding 2', 'Coding', 'Fresh deck']) {{
           type('Deck name', name)
           seen.push({{ name, human: field('Human face').props.value, agent: field('Agent face').props.value,
-            refused: !!button(view.tree, /^Preview the new deck$/).props.disabled }})
+            refused: !!button(view.tree, /^Save the new deck$/).props.disabled }})
         }}
         console.log(JSON.stringify(seen))
     """)
     for step in out:
         assert step["human"] == HUMAN and step["agent"] == AGENT, step
-    assert [s["refused"] for s in out] == [True, False, False, True, False, True, False], out
+    # 0.2: the file name is made from the name and hidden, so a one-letter name is fine; Coding is taken.
+    assert [s["refused"] for s in out] == [False, False, False, True, False, True, False], out
 
 
 # ---- P2-UI-05: Escape inside an IME composition -------------------------------------------------------
@@ -117,10 +118,9 @@ def test_notes_after_a_save_and_a_delete_name_the_deck(tmp_path):
         const bar = () => text(all(view.tree, n => n.props['data-ubk'] === 'undo'))
         one(all(view.tree, n => n.type === 'button' && n.props.className === 'nm' && text(n) === 'Mine'), 'Mine').props.onClick()
         view.render()
-        all(view.tree, n => n.props['aria-label'] === 'Remove mi-01')[0].props.onClick(); await view.settle()
-        await view.settle(20)
-        button(view.tree, /^Save$/).props.onClick(); await view.settle(20)
-        const res = { saved: bar() }
+        // M4 (D21): your own deck saves at once, no preview and no second click.
+        all(view.tree, n => n.props['aria-label'] === 'Remove mi-01')[0].props.onClick(); await view.settle(20)
+        const res = { saved: bar(), previews: rests.filter(([m, p]) => p.endsWith('/preview')).length }
         button(view.tree, /^Undo$/).props.onClick(); await view.settle()
         res.undone = bar()
         button(view.tree, /^Delete deck$/).props.onClick(); view.render()
@@ -130,32 +130,33 @@ def test_notes_after_a_save_and_a_delete_name_the_deck(tmp_path):
         console.log(JSON.stringify(res))
     """)
     assert out["saved"].startswith("Saved Mine: 1 card removed (version 3)."), out["saved"]
+    assert out["previews"] == 0, out
     assert out["undone"].startswith("Undone: Mine is back at version 2."), out["undone"]
     assert out["deleted"].startswith("Deleted Mine."), out["deleted"]
 
 
 # ---- P2-UI-01: New deck never takes a shipped deck's file names --------------------------------------
 
-def test_new_deck_refuses_shipped_and_own_copy_file_names(tmp_path):
-    """P2-UI-01: "Coding own" (file name coding-own) would take the place of the shipped Coding; any slug
-    of a shipped or community deck, and that deck's "-own" file name, is refused with a line that says to
-    edit that deck instead. An own deck's "-own" name is fine."""
+def test_new_deck_never_takes_a_shipped_deck_or_its_own_copy_file_name(tmp_path):
+    """P2-UI-01 for 0.2 (M4: the file name is hidden): a new deck named like a deck that comes with the
+    plugin is refused with a line that says to make your own copy instead; a name whose file name would
+    be a shipped deck's own copy (coding-own) gets another file name, so it never takes that deck's place."""
     out = run_js(tmp_path, """
-        import { newDeckProblem } from '@src/decks.js'
+        import { newDeckProblem, newDeckSlug } from '@src/decks.js'
         import { DECKS } from './data.js'
         const decks = [...DECKS.decks, { deck: 'poetry', name: 'Poetry', source: 'community', cards: 5, switch: { draw: true, auto: false } },
-          { deck: 'design', name: 'Design', source: 'shipped', cards: 6, switch: { draw: true, auto: false }, shadowed_by: 'design' }]
-        const p = (name, slug) => newDeckProblem(name, slug, decks)
-        console.log(JSON.stringify({ codingOwn: p('Coding own', 'coding-own'), writingOwn: p('Writing own', 'writing-own'),
-          poetryOwn: p('Verses', 'poetry-own'), poetry: p('Verses', 'poetry'), designOwn: p('Design own', 'design-own'),
-          mineOwn: p('Mine own', 'mine-own'), zebra: p('Zebra cards', 'zebra-cards') }))
+          { deck: 'design', name: 'Design', source: 'shipped', cards: 6, switch: { draw: true, auto: false }, shadowed_by: 'design-own' }]
+        const p = name => ({ problem: newDeckProblem(name, newDeckSlug(name, decks), decks), slug: newDeckSlug(name, decks) })
+        console.log(JSON.stringify({ coding: p('Coding'), poetry: p('poetry'), design: p('Design'), codingOwn: p('Coding own'), designOwn: p('Design own'),
+          mine: p('Mine'), mineOwn: p('Mine own'), zebra: p('Zebra cards') }))
     """)
-    for k in ("codingOwn", "writingOwn", "poetryOwn", "poetry", "designOwn"):
-        assert out[k], k
-        assert "edit" in out[k].lower(), out[k]
-        assert len(out[k]) <= 160, out[k]
-    assert "Coding" in out["codingOwn"] and "Writing" in out["writingOwn"] and "Poetry" in out["poetryOwn"]
-    assert out["mineOwn"] == "" and out["zebra"] == ""
+    for k in ("coding", "poetry", "design"):
+        assert "make your own copy" in out[k]["problem"], out[k]
+        assert len(out[k]["problem"]) <= 160
+    assert "already" in out["mine"]["problem"]
+    for k, slug in (("codingOwn", "coding-own"), ("designOwn", "design-own")):
+        assert out[k]["problem"] == "" and out[k]["slug"] != slug, out[k]
+    assert out["mineOwn"] == {"problem": "", "slug": "mine-own"} and out["zebra"] == {"problem": "", "slug": "zebra-cards"}, out
 
 
 # ---- P2-UI-04: a failed "Replace mine" -----------------------------------------------------------------
@@ -229,7 +230,7 @@ def test_shortcut_rereads_a_stale_deck_list_before_trusting_it(tmp_path):
         await new Promise(r => setTimeout(r, 20))
         const key = ctx.reg.find(c => c.id === 'draw-key').data
         const press = async () => {
-          ctx.storage.set('deck:test', 'writing')
+          ctx.storage.set('pressed:test', 'writing')
           const n = rests.length
           await key.run()
           await new Promise(r => setTimeout(r, 5))
@@ -250,17 +251,16 @@ def test_shortcut_rereads_a_stale_deck_list_before_trusting_it(tmp_path):
 # ---- P2-UI-09: user text takes its direction from the text --------------------------------------------
 
 def test_deck_names_and_diff_lines_carry_dir_auto(tmp_path):
-    """P2-UI-09: the diff list's card lines, the sheet header, the deck list, the settings switch table
-    and the table's deck chooser set dir="auto" on deck and card text."""
+    """P2-UI-09: the diff list's card lines, the sheet header, the deck list and the Draw tab's deck
+    chips set dir="auto" on deck and card text."""
     out = run_js(tmp_path, EDITOR + """
-        import { SettingsPage } from '@src/settings.js'
-        import { TableView } from '@src/table.js'
+        import { DrawView } from '@src/draw.js'
         const name = 'دفتر'
         const decks = { ...DECKS, decks: DECKS.decks.map(d => (d.deck === 'mine' ? { ...d, name } : d)) }
         queryClient.setQueryData(K('deck', 'mine'), { ...MINE, deck: { ...MINE.deck, name } })
         queryClient.setQueryData(K('decks'), decks)
         queryClient.setQueryData(K('settings'), { ok: true, schema: 1, settings: { autodraw: false, autodraw_decks: [] } })
-        setAnswer(() => ({ ok: true, schema: 1, target: 'mine', summary: '1 card', cards: 2, confirm: 'c1',
+        setAnswer(m => m === 'PUT' ? { __status: 409, body: { ok: false, schema: 1, error: 'stale_preview', message: 'Preview first.' } } : ({ ok: true, schema: 1, target: 'mine', summary: '1 card', cards: 2, confirm: 'c1',
           diff: { added: [{ id: 'mi-02', human: 'اقرأ' }], removed: [{ id: 'mi-01', human: 'קרא' }], changed: [{ id: 'mi-03', fields: ['human'], before: { human: 'a' }, after: { human: 'ب' } }] } }))
         const v = mount(jsx(DecksView, { decksData: decks }))
         one(all(v.tree, n => n.type === 'button' && n.props.className === 'nm' && text(n) === name), name).props.onClick()
@@ -276,14 +276,12 @@ def test_deck_names_and_diff_lines_carry_dir_auto(tmp_path):
           head: head.map(n => [n.props.dir || null, ...dirOf(n, name)].some(d => d === 'auto')),
           list: dirOf(all(v.tree, n => n.props['data-ubk'] === 'decklist')[0], name),
           diff: ['mi-02: اقرأ', 'mi-01: קרא', 'ب'].map(s => dirOf(diff, s)),
-          settings: dirOf(all(mount(jsx(SettingsPage, {})).tree, n => n.props['data-ubk'] === 'switches')[0], name),
-          table: dirOf(mount(jsx(TableView, { decks: decks.decks })).tree, name),
+          table: dirOf(mount(jsx(DrawView, { decks: decks.decks })).tree, name),
         }
         console.log(JSON.stringify(res))
     """)
     assert out["head"] == [True], out
     assert out["list"] == ["auto"], out
-    assert out["settings"] == ["auto"], out
     assert out["table"] == ["auto"], out
     for d in out["diff"]:
         assert d and all(x == "auto" for x in d), out["diff"]
@@ -303,7 +301,7 @@ def test_a_refusal_with_problems_says_how_many_once_above_the_list(tmp_path):
           if (p === '/decks/import' && mode === 'many') return { __status: 422, body: { ok: false, schema: 1, error: 'invalid_deck', message: long, problems: probs(50), problems_more: 1550 } }
           if (p === '/decks/import' && mode === 'one') return { __status: 422, body: { ok: false, schema: 1, error: 'invalid_deck', message: 'The deck breaks these rules: bg-0: unknown tag', problems: probs(1) } }
           if (p === '/decks/import') return { __status: 400, body: { ok: false, schema: 1, error: 'invalid', message: 'the file is not a deck' } }
-          if (p === '/decks/mine/preview') return { __status: 422, body: { ok: false, schema: 1, error: 'invalid_deck', message: long, problems: probs(50), problems_more: 71 } }
+          if (p === '/decks/mine/preview' || (m === 'PUT' && p === '/decks/mine')) return { __status: 422, body: { ok: false, schema: 1, error: 'invalid_deck', message: long, problems: probs(50), problems_more: 71 } }
           return { ok: true, schema: 1 }
         })
         const alertIn = id => text(all(all(view.tree, n => n.props['data-ubk'] === id)[0], n => n.props.role === 'alert'))

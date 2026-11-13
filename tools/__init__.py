@@ -13,3 +13,4 @@ class Runtime:
     unattended: Callable[[], Optional[str]] = field(default=lambda: None)
     session_id: str = ""
     author: str = "agent"
+    where: Callable[[], tuple] = field(default=lambda: ("unknown", ""))

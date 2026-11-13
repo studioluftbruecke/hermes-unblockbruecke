@@ -1,22 +1,26 @@
-// The Unblockbrücke page (/unblockbruecke): three views chosen by the query string (?view=table|decks|journal),
-// and the one-sentence states for a backend that is not on, not reachable, or does not match.
+// The Unblockbrücke page (/unblockbruecke): three tabs named for who they serve, chosen by the query
+// string (?view=draw|hermes|decks; 0.1's table and journal open Draw and Hermes), and the one-sentence
+// states for a backend that is not on, not reachable, or does not match.
+import * as SDK from '@hermes/plugin-sdk'
 import { useValue } from '@hermes/plugin-sdk'
 import { useEffect, useState } from 'react'
 import { jsx } from 'react/jsx-runtime'
 
 import { $connection, NOT_ON_TEXT, OFFLINE_TEXT, PATH, SCHEMA_TEXT } from './core.js'
 import { DecksView } from './decks.js'
-import { JournalView } from './journal.js'
+import { DrawView } from './draw.js'
+import { HermesView } from './hermes.js'
 import { useDecks } from './queries.js'
-import { TableView } from './table.js'
-import { h } from './ui.js'
+import { h, hk } from './ui.js'
 
-const VIEWS = [['table', 'Table'], ['decks', 'Decks'], ['journal', 'Journal']]
+export const VIEWS = [['draw', 'Draw'], ['hermes', 'Hermes'], ['decks', 'Decks']]
+const OLD = { table: 'draw', journal: 'hermes' }
 
 export function viewFromHash(hash) {
   const q = String(hash || '').split('?')[1] || ''
-  const v = new URLSearchParams(q).get('view')
-  return VIEWS.some(([id]) => id === v) ? v : 'table'
+  const raw = new URLSearchParams(q).get('view')
+  const v = OLD[raw] || raw
+  return VIEWS.some(([id]) => id === v) ? v : 'draw'
 }
 
 function useView() {
@@ -27,7 +31,7 @@ function useView() {
     return () => window.removeEventListener('hashchange', on)
   }, [])
   const go = v => {
-    window.location.hash = `#${PATH}${v === 'table' ? '' : `?view=${v}`}`
+    window.location.hash = `#${PATH}${v === 'draw' ? '' : `?view=${v}`}`
     setView(v)
   }
   return [view, go]
@@ -44,24 +48,31 @@ export function ConnectionNote({ error }) {
   return h('div', { className: 'banner err', role: 'status', 'data-ubk': 'connection' }, text)
 }
 
+/** Desktop's Tabs (HX-14) when the SDK has them, else tab buttons in the same look. */
+function TabBar({ view, go }) {
+  const { Tabs, TabsList, TabsTrigger } = SDK
+  if (Tabs && TabsList && TabsTrigger) {
+    return jsx(Tabs, { value: view, onValueChange: go, className: 'tabs', children: jsx(TabsList, { 'aria-label': 'Unblockbrücke', children: VIEWS.map(([id, label]) => jsx(TabsTrigger, { value: id, children: label }, id)) }) })
+  }
+  return h('div', { className: 'tabs', role: 'tablist', 'aria-label': 'Unblockbrücke' },
+    VIEWS.map(([id, label]) => hk(id, 'button', { type: 'button', role: 'tab', 'aria-selected': view === id, onClick: () => go(id) }, label)))
+}
+
 export function CardsPage() {
   const [view, go] = useView()
   const decks = useDecks()
   const conn = useValue($connection)
   const blocked = (decks.error && (decks.error.notOn || decks.error.schema || decks.error.network)) || conn === 'off' || conn === 'schema'
   return h('div', { className: 'ubk page', 'data-view': view },
-    h('div', { className: 'head' },
-      h('h1', null, 'Unblockbrücke'),
-      h('span', { className: 'muted small' }, 'Cards to unblock yourself or your agent.'),
-      h('span', { className: 'grow' }),
-      h('div', { className: 'seg', role: 'tablist', 'aria-label': 'View' }, VIEWS.map(([id, label]) =>
-        jsx('button', { type: 'button', role: 'tab', 'aria-selected': view === id, 'aria-pressed': view === id, onClick: () => go(id), children: label }, id)))),
+    h('header', { className: 'head' },
+      h('div', { className: 'ti' }, h('h1', null, 'Unblockbrücke'), h('span', { className: 'sub' }, 'Cards to unblock yourself or your agent.')),
+      h(TabBar, { view, go })),
     h('div', { className: 'body' },
       blocked || (decks.error && !decks.data) ? h('div', { className: 'col', style: { maxWidth: 720 } },
         h(ConnectionNote, { error: decks.error }),
         decks.error && !decks.error.notOn && !decks.error.schema && !decks.error.network ? h('div', { className: 'banner err' }, `The decks did not load: ${decks.error.message}`) : null)
         : !decks.data ? h('p', { className: 'note' }, 'Loading the decks…')
           : view === 'decks' ? h(DecksView, { decksData: decks.data })
-            : view === 'journal' ? h(JournalView, null)
-              : h(TableView, { decks: decks.data.decks })))
+            : view === 'hermes' ? h(HermesView, { decksData: decks.data })
+              : h(DrawView, { decks: decks.data.decks })))
 }

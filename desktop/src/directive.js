@@ -32,12 +32,12 @@ const Source = ({ source }) => h('span', { className: 'ubk-directive-source' }, 
 function Resolved({ attrs, source, streaming }) {
   const q = useDeck(attrs.deck, { staleTime: 300000 })
   const [flipped, setFlipped] = useState(attrs.face === 'agent')
-  if (q.isLoading) return h('div', { className: 'ubk inline', 'data-ubk': 'directive' }, h(CardBack, { mark: 'ring', width: 200 }))
+  if (q.isLoading) return h('div', { className: 'ubk inline', 'data-ubk': 'directive' }, h(CardBack, { width: 200, stack: false }))
   const view = q.data && q.data.deck ? viewFromDeck(q.data.deck, attrs.id, attrs.face) : null
   if (!view) return h(Source, { source })
   return h('div', { className: 'ubk inline', 'data-ubk': 'directive' },
     h(Card, { card: view, flipped, onFlip: () => setFlipped(!flipped), width: 200, size: 'sm' }),
-    h('span', { className: 'note' }, streaming ? `${view.deck_name}, ${view.id}` : `${view.deck_name}, ${view.id}. Click the card to turn it.`))
+    h('span', { className: 'note' }, streaming ? view.deck_name : `${view.deck_name}. Click the card to turn it.`))
 }
 
 export function CardDirective({ attrs, source, streaming }) {

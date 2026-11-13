@@ -17,7 +17,7 @@ def api(tmp_path):
 
 def test_health_and_settings(api):
     status, body = api.health()
-    assert status == 200 and body["schema"] == 1 and body["version"] == "0.1.4"
+    assert status == 200 and body["schema"] == 1 and body["version"] == "0.2.0"
     status, body = api.settings_get()
     assert body["settings"]["show_in_sidebar"] is False and body["settings"]["autodraw"] is False
     assert body["settings"]["show_in_statusbar"] is True, "show_in_statusbar defaults to on (PLAN-v0.1.3 M3)"
@@ -219,4 +219,5 @@ def test_router_mounts_every_contract_route():
                       ("GET", "/today"), ("GET", "/journal"), ("POST", "/journal/rate"), ("POST", "/journal/reset"),
                       ("POST", "/decks/{slug}/preview"), ("PUT", "/decks/{slug}"), ("GET", "/decks/{slug}/versions"),
                       ("POST", "/decks/{slug}/restore"), ("POST", "/decks/{slug}/delete"), ("POST", "/decks/import"),
-                      ("GET", "/decks/{slug}/export"), ("GET", "/settings"), ("PUT", "/settings/decks")}
+                      ("GET", "/decks/{slug}/export"), ("GET", "/settings"), ("PUT", "/settings/decks"),
+                      ("POST", "/setting")}

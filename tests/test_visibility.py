@@ -42,7 +42,7 @@ const tick = () => new Promise(r => setTimeout(r, 5))
 // An answer the test releases by hand, so a user's choice can land while the first read is in flight.
 const held = () => { let release; const p = new Promise(r => { release = r }); return { answer: () => p, release } }
 """
-ROW = "nav@53:Unblockbrücke:/unblockbruecke:layers"
+ROW = "nav@53:Unblockbrücke:/unblockbruecke:copy"
 
 
 def test_the_button_follows_the_stored_answer_before_any_read_and_each_read_after(tmp_path):
@@ -91,7 +91,7 @@ def test_the_button_follows_the_stored_answer_before_any_read_and_each_read_afte
 
 def test_the_row_is_the_brand_at_53_from_the_first_frame(tmp_path):
     """The shared module registers the row in register(), before any backend answer: the brand as the
-    label, the page path, the layers codicon, position 53 (D3). A stored position and a stored hidden
+    label, the page path, the copy codicon, position 53 (D3). A stored position and a stored hidden
     row hold."""
     out = run_js(tmp_path, CASE + """
         const res = {}
@@ -107,7 +107,7 @@ def test_the_row_is_the_brand_at_53_from_the_first_frame(tmp_path):
         res.hidden = rows(ctx).length
         console.log(JSON.stringify(res))
     """)
-    assert out == {"fresh": ROW, "moved": "nav@12:Unblockbrücke:/unblockbruecke:layers", "hidden": 0}, out
+    assert out == {"fresh": ROW, "moved": "nav@12:Unblockbrücke:/unblockbruecke:copy", "hidden": 0}, out
 
 
 def test_seed_skipped_when_a_choice_is_stored(tmp_path):
@@ -128,7 +128,7 @@ def test_seed_skipped_when_a_choice_is_stored(tmp_path):
         }
         console.log(JSON.stringify(res))
     """)
-    assert out["shownBackendFalse"] == {"rows": "nav@20:Unblockbrücke:/unblockbruecke:layers", "stored": {"show": True, "position": 20},
+    assert out["shownBackendFalse"] == {"rows": "nav@20:Unblockbrücke:/unblockbruecke:copy", "stored": {"show": True, "position": 20},
                                         "sets": 0, "seeded": False, "sidebar": True}, out
     assert out["hiddenBackendTrue"] == {"rows": "", "stored": {"show": False, "position": 53}, "sets": 0, "seeded": False,
                                         "sidebar": False}, out
@@ -204,7 +204,7 @@ def test_a_choice_made_while_the_first_read_is_in_flight_wins(tmp_path):
         console.log(JSON.stringify(res))
     """)
     assert out["hidBackendTrue"] == {"rows": "", "stored": {"show": False, "position": 53}}, out
-    assert out["movedBackendFalse"] == {"rows": "nav@30:Unblockbrücke:/unblockbruecke:layers", "stored": {"show": True, "position": 30}}, out
+    assert out["movedBackendFalse"] == {"rows": "nav@30:Unblockbrücke:/unblockbruecke:copy", "stored": {"show": True, "position": 30}}, out
 
 
 def test_a_failed_first_read_seeds_nothing_and_the_next_answer_seeds(tmp_path):
@@ -238,7 +238,7 @@ def test_settings_page_has_the_sidebar_section_and_no_show_in_sidebar_line(tmp_p
         const m = mount(jsx(SettingsPage, {}))
         const section = () => all(m.tree, n => n.props['data-sidebar-section'] === 'Unblockbrücke')
         const shown = { count: section().length, text: text(section()[0]) }
-        const kv = all(m.tree, n => n.props['data-ubk'] === 'current-settings')[0]
+        const kv = null
         all(section()[0], n => n.type === 'Switch')[0].props.onCheckedChange(false)
         m.render()
         const hidden = { text: text(section()[0]), rows: rows(ctx).length, stored: ctx.store.get('sidebar') }
@@ -249,14 +249,14 @@ def test_settings_page_has_the_sidebar_section_and_no_show_in_sidebar_line(tmp_p
     assert out["hidden"] == {"text": "SidebarShow in the sidebarPositionLower numbers sit higher. Kanban is 50."
                                      "Open it from the command palette: Open Unblockbrücke.",
                              "rows": 0, "stored": {"show": False, "position": 53}}, out["hidden"]
-    assert "Auto-draw, card of the day, learning and Show in status bar live in plugin settings" in out["all"], out["all"]
-    assert "Show in sidebar" not in out["all"], out["all"]
-    assert "Show in status baroff" in out["kv"], out["kv"]
+    # 0.2: the settings page is a pointer: Open Unblockbrücke, the Sidebar section, the update note.
+    assert out["all"].startswith("Open Unblockbrücke"), out["all"]
+    assert "Show in sidebar" not in out["all"] and "Auto-draw" not in out["all"], out["all"]
 
 
 def test_palette_open_unblockbruecke_opens_the_page(tmp_path):
-    """The hidden-row line names the palette row "Open Unblockbrücke": it sits beside "Open decks" and
-    opens the page."""
+    """The hidden-row line names the palette row "Open Unblockbrücke": it opens the page. 0.2 names table:
+    the palette has "Draw a card", "Open Unblockbrücke" and "Draw from <deck>", no "Open decks"."""
     out = run_js(tmp_path, CASE + """
         import './helpers.js'
         const ctx = makeCtx()
@@ -268,6 +268,6 @@ def test_palette_open_unblockbruecke_opens_the_page(tmp_path):
         open.data.run()
         console.log(JSON.stringify({ labels: palette.map(c => c.data.label), id: open.id, dataId: open.data.id, calls: globalThis.__calls }))
     """)
-    assert out["labels"][:3] == ["Draw a card", "Open Unblockbrücke", "Open decks"], out
+    assert out["labels"][:2] == ["Draw a card", "Open Unblockbrücke"] and "Open decks" not in out["labels"], out
     assert out["id"] == "palette-open" and out["dataId"] == "unblockbruecke.palette.open", out
     assert out["calls"] == [["navigate", "/unblockbruecke"]], out

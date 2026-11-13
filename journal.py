@@ -68,12 +68,44 @@ def append(store: Store, row: dict) -> dict:
 
 def record_draw(store: Store, *, by: str, deck: str, card: str, face: str, context: str,
                 session_id: str = "", turn_id: str = "", tool: str = "", streak: Optional[int] = None,
-                attached: Optional[bool] = None) -> dict:
+                attached: Optional[bool] = None, where: str = "", platform: str = "") -> dict:
+    """One draw line. `where` (0.2, AX-2): where Hermes' turn ran, on draws by `agent` and `auto`
+    (`bridge.where`); `platform` names the messaging platform when `where` is `messaging`."""
     if by not in BY:
         raise ValueError(f"by must be one of {', '.join(BY)}")
     return append(store, {"kind": "draw", "draw_id": uuid7(), "at": bridge.iso(), "by": by, "deck": deck,
                           "card": card, "face": face, "context": context, "session_id": session_id,
-                          "turn_id": turn_id, "tool": tool, "streak": streak, "attached": attached})
+                          "turn_id": turn_id, "tool": tool, "streak": streak, "attached": attached,
+                          "where": where if by in ("agent", "auto") else "",
+                          "platform": platform if where == "messaging" else ""})
+
+
+WHERE_LABELS = {"desktop": "Desktop chat", "kanban": "Kanban task", "cron": "Cron job", "cli": "CLI",
+                "subagent": "Delegated task", "api": "API", "editor": "Editor", "webhook": "Webhook",
+                "unknown": "Unknown"}
+HERMES = ("agent", "auto")
+
+
+def where_label(where: str, platform: str = "") -> str:
+    """The place a person reads for a `where` code; a messaging chat names its platform."""
+    if where == "messaging":
+        return f"{(platform or 'Messaging').replace('_', ' ').title()} chat"
+    return WHERE_LABELS.get(where, "Unknown")
+
+
+def facts(item: dict) -> dict:
+    """0.2 (AX-4): the outcome as facts. `next_call` is the next call's status in the same turn as Hermes
+    counted it ("ok" or "failed"), absent when the turn made no further call; never "recovered"."""
+    out: dict = {}
+    nxt = item.get("next")
+    if isinstance(nxt, dict) and nxt.get("status") in ("ok", "failed"):
+        out["next_call"] = nxt["status"]
+        if isinstance(nxt.get("tool"), str) and nxt["tool"]:
+            out["next_call_tool"] = nxt["tool"]
+    where = item.get("where")
+    if isinstance(where, str) and where:
+        out["where_label"] = where_label(where, str(item.get("platform") or ""))
+    return out
 
 
 def record_outcome(store: Store, draw_id: str, next_: dict) -> dict:
@@ -186,7 +218,8 @@ _KEEP_FILES, _KEEP_SNAPS = 64, 8
 _KEEP_ROWS = 60_000  # rows kept for data folders other than the one just read (that one is always kept)
 _HEAD = 256
 # Fields whose values repeat from row to row: one shared string each instead of one per row.
-_SHARED = frozenset(("kind", "by", "deck", "card", "face", "context", "session_id", "turn_id", "tool", "rating"))
+_SHARED = frozenset(("kind", "by", "deck", "card", "face", "context", "session_id", "turn_id", "tool", "rating",
+                     "where", "platform"))
 
 
 def _last_reset(all_rows: list, start: int, cut: int) -> int:
@@ -368,7 +401,7 @@ def draws_from(all_rows: list[dict], limit: int = 50, session: str = "", by: str
             continue
         if session and row.get("session_id") != session:
             continue
-        if by and row.get("by") != by:
+        if by and (row.get("by") not in HERMES if by == "hermes" else row.get("by") != by):
             continue
         did = str(row.get("draw_id") or "")
         item = dict(row)
@@ -377,6 +410,7 @@ def draws_from(all_rows: list[dict], limit: int = 50, session: str = "", by: str
             item["rated_by"] = ratings[did].get("by")
         if did in outcomes:
             item["next"] = outcomes[did]
+        item.update(facts(item))
         out.append(item)
         if len(out) >= max(1, int(limit)):
             break

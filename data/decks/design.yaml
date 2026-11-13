@@ -3,9 +3,9 @@ deck: "design"
 name: "Design"
 by: "Studio Luftbrücke"
 license: "CC-BY-4.0"
-version: 1
+version: 2
 faces: [human, agent]
-mark: "triangle"
+mark: "shapes"
 area: "design"
 description: "For a layout that does not read and a choice that will not settle"
 voice: "A sharp-eyed art director who squints at everything and is usually right."
@@ -16,6 +16,9 @@ glossary:
   content: "Puts real words and real data in before judging the layout."
   states: "Designs the empty, broken and crowded versions, not just the happy one."
   context: "Checks the design where and how it will really be used."
+  type: "Plays with the typeface and the size of the words."
+  space: "Plays with margins and gaps until the density feels right."
+  motion: "Uses one small movement to point the eye."
 cards:
   - id: "de-01"
     human: "Squint until only shapes remain."
@@ -49,3 +52,35 @@ cards:
     human: "What is this screen trying to say?"
     agent: "Write the screen's single message in one line, rank every element by how much it serves that line, and shrink the bottom three."
     tags: [hierarchy, subtract]
+  - id: "de-09"
+    human: "One colour, all the way."
+    agent: "Redo the screen in shades of a single hue with layout and type unchanged. Render it next to the current version and note which parts of the hierarchy survived without the other colours."
+    tags: [contrast]
+  - id: "de-10"
+    human: "Turn it up to eleven, then back to seven."
+    agent: "Make one deliberately loud version: huge type, clashing colour, tight spacing. Render it next to the current one, then carry over the single element that looked better."
+    tags: [hierarchy]
+  - id: "de-11"
+    human: "Swap the biggest and the smallest thing."
+    agent: "Give the smallest piece of text the size and weight of the headline and shrink the headline to caption size. Render both and say what the swap showed about where attention belongs."
+    tags: [hierarchy]
+  - id: "de-12"
+    human: "Set it in a typeface you'd never pick."
+    agent: "Ask which typeface the person would never use, set the whole screen in it with the layout unchanged, render it next to the current one, and name one quality worth stealing back."
+    tags: [type, human]
+  - id: "de-13"
+    human: "Double every gap. Then halve it."
+    agent: "Double every margin and every gap between groups, then try half, with the content unchanged. Render the three densities side by side so the right one is plain to see."
+    tags: [space]
+  - id: "de-14"
+    human: "Make it a poster."
+    agent: "Lay the screen out as a poster: one element at three times its size, everything else small at the edges. Render it beside the current layout and list what the poster made you drop."
+    tags: [hierarchy, subtract]
+  - id: "de-15"
+    human: "Let one thing break the grid."
+    agent: "Pick one element and let it cross the grid, overlap a neighbour or bleed off the edge while the rest stays strict. Render two or three placements next to the current layout."
+    tags: [hierarchy]
+  - id: "de-16"
+    human: "Animate the one thing that matters."
+    agent: "Give the element the screen exists for one small entrance or hover motion under 300 milliseconds, off under reduced motion. Show two frames or a short clip, before and after."
+    tags: [motion]

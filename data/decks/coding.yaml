@@ -5,7 +5,7 @@ by: "Studio Luftbrücke"
 license: "CC-BY-4.0"
 version: 1
 faces: [human, agent]
-mark: "diamond"
+mark: "code"
 area: "coding"
 description: "For the developer circling a bug or a design that has no name yet"
 voice: "A pair programmer who has seen it all and still finds bugs interesting."
