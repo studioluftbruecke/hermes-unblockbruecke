@@ -149,6 +149,10 @@ coach with one.
   its environment. It then reads the value back through Hermes' config loader, so a save Hermes refused
   (a managed install, a key your administrator pinned) answers "not allowed". It refuses to save in
   unattended runs (scheduled jobs and single-query runs).
+- **Hermes compatibility:** two guarded private markers tell the plugin whether a person is present and
+  whether the turn is a delegated child: `gateway.session_finite.finite_turn_required` and
+  `agent.delegation_context.is_delegated_child_context`. If attendance cannot be determined, writes are
+  refused. Settings failures use stable plugin messages rather than Hermes' startup output.
 - **Agent context:** with **Hermes draws when stuck** on, about 300 characters (the card's back, one
   sentence and a draw id) are added to the failing tool result, so the model reads them. A card the
   agent draws on request enters its context the same way. Card text must pass plain-text rules (no

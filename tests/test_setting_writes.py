@@ -21,6 +21,7 @@ def profile(tmp_path, monkeypatch):
         (home / sub_dir).mkdir(parents=True)
     (home / "config.yaml").write_text("model:\n  default: kept-as-is\n", encoding="utf-8")
     monkeypatch.setenv("HERMES_HOME", str(home))
+    monkeypatch.setenv("HERMES_DISABLE_LAZY_INSTALLS", "1")
     for name in ("HERMES_MANAGED", "HERMES_MANAGED_DIR", "HERMES_CONFIG_BACKEND"):
         monkeypatch.delenv(name, raising=False)
     if SOURCE is not None and str(SOURCE) not in os.environ.get("PYTHONPATH", "").split(os.pathsep):
@@ -70,7 +71,8 @@ def test_a_managed_install_by_marker_file_is_refused_and_nothing_is_written(prof
     (profile / ".managed").write_text("nix\n", encoding="utf-8")
     before = (profile / "config.yaml").read_text(encoding="utf-8")
     status, body = api.setting_set({"key": "autodraw", "value": True})
-    assert status == 403 and body["error"] == "not_allowed" and "managed" in body["message"], body
+    assert status == 403 and body["error"] == "not_allowed", body
+    assert body["message"] == "Plugin settings cannot be changed in a managed install.", body
     assert (profile / "config.yaml").read_text(encoding="utf-8") == before
 
 
@@ -79,7 +81,8 @@ def test_a_managed_install_by_service_environment_is_refused_and_nothing_is_writ
     monkeypatch.setenv("HERMES_MANAGED", "nix")
     before = (profile / "config.yaml").read_text(encoding="utf-8")
     status, body = api.setting_set({"key": "autodraw", "value": True})
-    assert status == 403 and body["error"] == "not_allowed" and "managed" in body["message"], body
+    assert status == 403 and body["error"] == "not_allowed", body
+    assert body["message"] == "Plugin settings cannot be changed in a managed install.", body
     assert (profile / "config.yaml").read_text(encoding="utf-8") == before
 
 
@@ -91,7 +94,8 @@ def test_a_key_the_administrator_pinned_is_refused_and_nothing_is_written(profil
                                        encoding="utf-8")
     monkeypatch.setenv("HERMES_MANAGED_DIR", str(admin))
     status, body = api.setting_set({"key": "autodraw", "value": True})
-    assert status == 403 and body["error"] == "not_allowed" and "administrator" in body["message"], body
+    assert status == 403 and body["error"] == "not_allowed", body
+    assert body["message"] == "This setting is managed by your administrator and cannot be changed here.", body
     assert "plugins" not in saved(profile)
     other = api.setting_set({"key": "learning", "value": False})  # a key the administrator left alone
     assert other[0] == 200 and plugin_settings(profile)["learning"] is False, other
@@ -126,33 +130,72 @@ def test_the_child_sees_what_hermes_reads_to_decide_whether_it_may_write(profile
     monkeypatch.setattr(settings, "saved_value", lambda key: None)
     api.setting_set({"key": "autodraw", "value": True})
     names = seen.read_text().split("\n")
-    assert {"HERMES_MANAGED", "HERMES_MANAGED_DIR", "HERMES_CONFIG_BACKEND"} <= set(names)
+    assert {"HERMES_MANAGED", "HERMES_MANAGED_DIR", "HERMES_CONFIG_BACKEND", "HERMES_DISABLE_LAZY_INSTALLS"} <= set(names)
 
 
-def test_a_cli_that_exits_0_without_saving_answers_403_with_its_reason(profile, monkeypatch, tmp_path):
-    script = tmp_path / "quiet_refusal.py"
-    script.write_text("import sys\nprint('Cannot set configuration values: this install is managed.', file=sys.stderr)\n",
-                      encoding="utf-8")
+def _fake_cli(tmp_path, monkeypatch, *, stdout="", stderr="", returncode=0):
+    script = tmp_path / "fake_cli.py"
+    script.write_text("import sys\n"
+                      f"sys.stdout.write({stdout!r})\n"
+                      f"sys.stderr.write({stderr!r})\n"
+                      f"sys.exit({returncode})\n", encoding="utf-8")
     monkeypatch.setattr(api, "HERMES_CLI", [api.sys.executable, str(script)])
     monkeypatch.setattr(settings, "saved_value", lambda key: None)
+
+
+def test_a_genuine_managed_refusal_has_a_stable_plugin_message(profile, monkeypatch, tmp_path):
+    _fake_cli(tmp_path, monkeypatch,
+              stderr="Cannot set configuration values: this Hermes installation is managed by nix.\n")
     status, body = api.setting_set({"key": "autodraw", "value": True})
-    assert status == 403 and body["error"] == "not_allowed" and "managed" in body["message"], body
+    assert status == 403 and body["error"] == "not_allowed", body
+    assert body["message"] == "Plugin settings cannot be changed in a managed install.", body
 
 
-def test_a_quiet_refusal_names_hermes_reason_not_a_warning_printed_before_it(profile, monkeypatch, tmp_path):
-    script = tmp_path / "warned_refusal.py"
-    script.write_text("import sys\nprint('\u26a0 install out of sync: rebuild the artifact', file=sys.stderr)\n"
-                      "print('\u2717 Cannot set configuration values: this install is managed by nix.', file=sys.stderr)\n",
-                      encoding="utf-8")
-    monkeypatch.setattr(api, "HERMES_CLI", [api.sys.executable, str(script)])
-    monkeypatch.setattr(settings, "saved_value", lambda key: None)
+def test_startup_output_cannot_replace_a_managed_refusal(profile, monkeypatch, tmp_path):
+    _fake_cli(tmp_path, monkeypatch,
+              stderr="hermes: preparing dependencies for this update...\n"
+                     "Cannot set configuration values: this Hermes installation is managed by nix.\n")
     status, body = api.setting_set({"key": "autodraw", "value": True})
-    assert status == 403 and "managed by nix" in body["message"] and "out of sync" not in body["message"], body
+    assert status == 403 and body["error"] == "not_allowed", body
+    assert body["message"] == "Plugin settings cannot be changed in a managed install.", body
+    assert "preparing dependencies" not in body["message"]
 
 
-def test_a_refusal_by_hermes_answers_403_with_its_reason(profile, monkeypatch, tmp_path):
-    script = tmp_path / "refuse.py"
-    script.write_text("import sys\nprint('✗ plugins.entries.unblockbruecke is administrator-managed')\nsys.exit(1)\n", encoding="utf-8")
-    monkeypatch.setattr(api, "HERMES_CLI", [api.sys.executable, str(script)])
+def test_an_administrator_managed_key_has_a_stable_plugin_message(profile, monkeypatch, tmp_path):
+    _fake_cli(tmp_path, monkeypatch, returncode=1,
+              stderr="Cannot set 'plugins.entries.unblockbruecke.settings.autodraw': "
+                     "it is managed by your administrator and cannot be changed.\n")
     status, body = api.setting_set({"key": "autodraw", "value": True})
-    assert status == 403 and body["error"] == "not_allowed" and "administrator-managed" in body["message"]
+    assert status == 403 and body["error"] == "not_allowed", body
+    assert body["message"] == "This setting is managed by your administrator and cannot be changed here.", body
+
+
+def test_a_remote_config_lock_has_a_stable_plugin_message(profile, monkeypatch, tmp_path):
+    _fake_cli(tmp_path, monkeypatch, returncode=1,
+              stderr="Cannot set 'plugins.entries.unblockbruecke.settings.autodraw': "
+                     "it is locked by the organization level of Remote Config and cannot be changed from this agent.\n")
+    status, body = api.setting_set({"key": "autodraw", "value": True})
+    assert status == 403 and body["error"] == "not_allowed", body
+    assert body["message"] == "This setting is locked by Remote Config and cannot be changed here.", body
+
+
+@pytest.mark.parametrize("returncode", [1, 23])
+def test_unknown_nonzero_errors_have_one_generic_refusal_without_raw_output(
+        profile, monkeypatch, tmp_path, caplog, returncode):
+    _fake_cli(tmp_path, monkeypatch, returncode=returncode,
+              stdout="arbitrary startup output\n", stderr="unrecognized failure details\n")
+    status, body = api.setting_set({"key": "autodraw", "value": True})
+    assert status == 403 and body["error"] == "not_allowed", body
+    assert body["message"] == "Hermes could not save the setting.", body
+    assert "arbitrary startup output" not in body["message"] + caplog.text
+    assert "unrecognized failure details" not in body["message"] + caplog.text
+
+
+@pytest.mark.parametrize("stderr", ["", "hermes: preparing dependencies for this update...\n"])
+def test_an_unchanged_config_never_reports_success(profile, monkeypatch, tmp_path, stderr):
+    before = (profile / "config.yaml").read_text(encoding="utf-8")
+    _fake_cli(tmp_path, monkeypatch, stderr=stderr)
+    status, body = api.setting_set({"key": "autodraw", "value": True})
+    assert status == 403 and body["error"] == "not_allowed", body
+    assert body["message"] == "Hermes did not save the setting; the profile's config holds another value", body
+    assert (profile / "config.yaml").read_text(encoding="utf-8") == before

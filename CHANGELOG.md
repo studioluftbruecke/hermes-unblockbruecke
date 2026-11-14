@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.3
+
+- Settings saves return stable plugin-owned refusals for managed installs, administrator-managed
+  keys, Remote Config locks and unknown CLI failures. Hermes startup output is never presented as
+  the reason, and an unchanged value never reports success.
+
 ## 0.2.2
 
 No change to how the plugin works; updating is optional.

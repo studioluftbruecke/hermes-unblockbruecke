@@ -38,35 +38,50 @@ VERSION = _version()
 # argument list without a shell.
 HERMES_CLI = [sys.executable, "-m", "hermes_cli.main"]
 # The child gets only what the CLI needs, never the secrets this process holds.
-CHILD_ENV = ("PATH", "HOME", "LANG", "LC_ALL", "LC_CTYPE", "TZ", "PYTHONPATH", "VIRTUAL_ENV", "TMPDIR")
+CHILD_ENV = ("PATH", "HOME", "LANG", "LC_ALL", "LC_CTYPE", "TZ", "PYTHONPATH", "VIRTUAL_ENV", "TMPDIR",
+             "HERMES_DISABLE_LAZY_INSTALLS")
 # What Hermes reads to find the profile's config and to decide whether it may write it (a managed install,
 # an administrator's pinned keys, a remote config backend, the file modes and owner a container wants), so
 # Hermes' own refusals hold in the child. None of them holds a secret.
 HERMES_WRITE_ENV = ("HERMES_MANAGED", "HERMES_MANAGED_DIR", "HERMES_CONFIG_BACKEND", "HERMES_DEV", "HERMES_CONTAINER",
                     "HERMES_SKIP_CHMOD", "HERMES_HOME_MODE", "HERMES_UID", "HERMES_GID")
 SAVE_TIMEOUT_S = 60
+MANAGED_REFUSAL = "Plugin settings cannot be changed in a managed install."
+ADMINISTRATOR_REFUSAL = "This setting is managed by your administrator and cannot be changed here."
+LOCKED_REFUSAL = "This setting is locked by Remote Config and cannot be changed here."
+SAVE_FAILED = "Hermes could not save the setting."
 NOT_SAVED = "Hermes did not save the setting; the profile's config holds another value"
+
+
+def _known_refusal(output: str) -> Optional[str]:
+    """Recognize Hermes' refusal contracts without exposing its startup output, paths or other details."""
+    text = output.lower()
+    if "managed by your administrator" in text or "administrator-managed" in text:
+        return ADMINISTRATOR_REFUSAL
+    if any("is locked by the " in line and " level" in line for line in text.splitlines()):
+        return LOCKED_REFUSAL
+    if ("plugin settings cannot be changed in a managed install" in text
+            or "this hermes installation is managed" in text or "this install is managed" in text):
+        return MANAGED_REFUSAL
+    return None
 
 
 def _save_setting(key: str, value: Any) -> None:
     """`hermes config set plugins.entries.unblockbruecke.settings.<key> <value>` for the profile whose home
-    is bound now: Hermes writes its own config.yaml, under its own lock. Raises PermissionError with
-    Hermes' reason when it refuses (a managed install, an administrator-managed key)."""
+    is bound now: Hermes writes its own config.yaml, under its own lock. Raises PermissionError with a stable
+    plugin-owned reason when Hermes refuses or the requested value does not land."""
     text = ("true" if value else "false") if isinstance(value, bool) else str(value)
     env = {name: os.environ[name] for name in (*CHILD_ENV, *HERMES_WRITE_ENV) if name in os.environ}
     env["HERMES_HOME"] = str(hermes_home())
     run = subprocess.run([*HERMES_CLI, "config", "set", f"plugins.entries.unblockbruecke.settings.{key}", text],
                          env=env, stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=SAVE_TIMEOUT_S)
+    refusal = _known_refusal(run.stdout + "\n" + run.stderr)
     if run.returncode != 0:
-        lines = [line.strip() for line in (run.stdout + "\n" + run.stderr).splitlines() if line.strip()]
-        reason = lines[-1].lstrip("✗ ").strip() if lines else f"hermes config set exited with {run.returncode}"
-        raise PermissionError(reason[:300])
+        raise PermissionError(refusal or SAVE_FAILED)
     # A managed install makes `config set` print its refusal and exit 0, so the value Hermes now holds decides.
     got = settings_mod.saved_value(key)
     if type(got) is not type(value) or got != value:
-        said = [line.strip().lstrip("✗ ").strip() for line in run.stderr.splitlines()
-                if line.strip() and not line.strip().startswith("⚠")]
-        raise PermissionError((said[0] if said else NOT_SAVED)[:300])
+        raise PermissionError(refusal or NOT_SAVED)
 
 
 # Tests point these at a temp folder and fixed settings; in Hermes they follow the bound home per call.

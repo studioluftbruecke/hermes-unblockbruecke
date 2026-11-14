@@ -1,5 +1,5 @@
 name: unblockbruecke
-version: "0.2.2"
+version: "0.2.3"
 description: "Cards to unblock yourself or your agent, drawn by you when you are stuck and by Hermes when its tool calls keep failing. Original decks, your own decks, local files, no account."
 author: "Studio Luftbrücke"
 license: MIT
